@@ -429,7 +429,7 @@ createClonedFnWithRetArg(FnSymbol* fn, FnSymbol* useFn)
 {
   SET_LINENO(fn);
   FnSymbol* newFn = fn->copy();
-  ArgSymbol* arg = new ArgSymbol(blankIntentForType(useFn->retType->refType), "_retArg", useFn->retType->refType);
+  ArgSymbol* arg = makeArgSymbol(blankIntentForType(useFn->retType->refType), "_retArg", useFn->retType->refType);
   newFn->insertFormalAtTail(arg);
   VarSymbol* ret = toVarSymbol(newFn->getReturnSymbol());
   INT_ASSERT(ret);

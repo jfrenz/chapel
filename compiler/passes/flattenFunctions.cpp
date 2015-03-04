@@ -188,7 +188,7 @@ addVarsToFormals(FnSymbol* fn, SymbolMap* vars) {
       // inconsistencies like this and keep things more
       // uniform/simple; but we haven't made this switch yet.
       //
-      ArgSymbol* arg = new ArgSymbol(blankIntentForType(type), sym->name, type);
+      ArgSymbol* arg = makeArgSymbol(blankIntentForType(type), sym->name, type);
       if (sym->hasFlag(FLAG_ARG_THIS))
         arg->addFlag(FLAG_ARG_THIS);
       fn->insertFormalAtTail(new DefExpr(arg));

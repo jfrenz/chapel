@@ -768,7 +768,7 @@ static void build_constructor(AggregateType* ct) {
           strcmp(field->name, "outer")) {
         // Create an argument to the default constructor
         // corresponding to the field.
-        ArgSymbol* arg = new ArgSymbol(INTENT_BLANK, field->name, field->type);
+        ArgSymbol* arg = makeArgSymbol(INTENT_BLANK, field->name, field->type);
 
         fieldArgMap[field] = arg;
         fieldNamesSet.set_add(field->name);
@@ -787,7 +787,7 @@ static void build_constructor(AggregateType* ct) {
     fn->insertAtTail(new CallExpr(PRIM_MOVE, fn->_this, allocCall));
   } else if (!ct->symbol->hasFlag(FLAG_TUPLE)) {
     // Create a meme (whatever that is).
-    meme = new ArgSymbol(INTENT_BLANK, 
+    meme = makeArgSymbol(INTENT_BLANK, 
                          "meme",
                          ct,
                          NULL,
@@ -1005,7 +1005,7 @@ static void build_constructor(AggregateType* ct) {
 
 static ArgSymbol* create_generic_arg(VarSymbol* field)
 {
-  ArgSymbol* arg = new ArgSymbol(INTENT_BLANK, field->name, field->type);
+  ArgSymbol* arg = makeArgSymbol(INTENT_BLANK, field->name, field->type);
 
   // We take it as a param argument if it is marked as a param field.
   if (field->hasFlag(FLAG_PARAM))
@@ -1058,10 +1058,10 @@ static void move_constructor_to_outer(FnSymbol* fn, AggregateType* outerType)
   // class's method list.
   outerType->methods.add(fn);
 
-  fn->_outer = new ArgSymbol(INTENT_BLANK, "outer", outerType);
+  fn->_outer = makeArgSymbol(INTENT_BLANK, "outer", outerType);
   fn->_outer->addFlag(FLAG_GENERIC); // Arg expects a real object :-P.
   fn->insertFormalAtHead(new DefExpr(fn->_outer));
-  fn->insertFormalAtHead(new DefExpr(new ArgSymbol(INTENT_BLANK,
+  fn->insertFormalAtHead(new DefExpr(makeArgSymbol(INTENT_BLANK,
                                                    "_mt",
                                                    dtMethodToken)));
   fn->addFlag(FLAG_METHOD);

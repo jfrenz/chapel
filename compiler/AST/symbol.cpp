@@ -952,6 +952,36 @@ void VarSymbol::accept(AstVisitor* visitor) {
 *                                                                   *
 ********************************* | ********************************/
 
+ArgSymbol* makeArgSymbol(IntentTag   iIntent,
+                         const char* iName,
+                         Type*       iType,
+                         Expr*       iTypeExpr,
+                         Expr*       iDefaultExpr,
+                         Expr*       iVariableExpr)
+{
+  static unsigned int mt_counter = 1;
+  static unsigned int outer_counter = 1;
+  
+  if(strcmp(iName, "_mt") == 0) {
+    char tmp[32];    
+    sprintf(tmp, "_mt_%u", mt_counter);
+    mt_counter++;
+    
+    return new ArgSymbol(iIntent, tmp, iType, iTypeExpr, iDefaultExpr, iVariableExpr);
+  }
+  
+  if(strcmp(iName, "outer") == 0) {
+    char tmp[32];    
+    sprintf(tmp, "outer_%u", outer_counter);
+    outer_counter++;
+    
+    return new ArgSymbol(iIntent, tmp, iType, iTypeExpr, iDefaultExpr, iVariableExpr);
+  }
+  
+  return new ArgSymbol(iIntent, iName, iType, iTypeExpr, iDefaultExpr, iVariableExpr);
+}
+
+
 ArgSymbol::ArgSymbol(IntentTag iIntent, const char* iName,
                      Type* iType, Expr* iTypeExpr,
                      Expr* iDefaultExpr, Expr* iVariableExpr) :
@@ -1020,7 +1050,7 @@ void ArgSymbol::verify() {
 
 ArgSymbol*
 ArgSymbol::copyInner(SymbolMap* map) {
-  ArgSymbol *ps = new ArgSymbol(intent, name, type, COPY_INT(typeExpr),
+  ArgSymbol *ps = makeArgSymbol(intent, name, type, COPY_INT(typeExpr),
                                 COPY_INT(defaultExpr), COPY_INT(variableExpr));
   ps->copyFlags(this);
   ps->cname = cname;

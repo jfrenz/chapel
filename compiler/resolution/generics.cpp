@@ -129,7 +129,7 @@ instantiate_tuple_signature(FnSymbol* fn) {
   
   for (int i = 1; i <= size; ++i) {
     const char* name = astr("x", istr(i));
-    ArgSymbol* formal = new ArgSymbol(INTENT_BLANK, name, dtAny, NULL, new SymExpr(gTypeDefaultToken));
+    ArgSymbol* formal = makeArgSymbol(INTENT_BLANK, name, dtAny, NULL, new SymExpr(gTypeDefaultToken));
     
     if (tuple) {
       formal->addFlag(FLAG_TYPE_VARIABLE);

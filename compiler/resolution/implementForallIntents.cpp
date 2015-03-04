@@ -996,7 +996,7 @@ static void propagateExtraLeaderArgs(CallExpr* call, VarSymbol* retSym,
             astrArg(ix, eActual->name) // uniquify arg name
             : astrArg(ix, "tet");
   
-    ArgSymbol*  eFormal = new ArgSymbol(INTENT_BLANK, eName, eActual->type);
+    ArgSymbol*  eFormal = makeArgSymbol(INTENT_BLANK, eName, eActual->type);
     extraFormals[ix] = eFormal;
     call->insertAtTail(new NamedExpr(eName, new SymExpr(eActual)));
     fn->insertFormalAtTail(eFormal);

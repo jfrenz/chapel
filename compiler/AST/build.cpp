@@ -742,7 +742,7 @@ buildForLoopExpr(Expr* indices, Expr* iteratorExpr, Expr* expr, Expr* cond, bool
   //
   FnSymbol* sifn = new FnSymbol(iteratorName);
   sifn->addFlag(FLAG_ITERATOR_FN);
-  ArgSymbol* sifnIterator = new ArgSymbol(INTENT_CONST_IN, "iterator", dtAny);
+  ArgSymbol* sifnIterator = makeArgSymbol(INTENT_CONST_IN, "iterator", dtAny);
   sifn->insertFormalAtTail(sifnIterator);
   fn->insertAtHead(new DefExpr(sifn));
   Expr* stmt = new CallExpr(PRIM_YIELD, expr);
@@ -762,7 +762,7 @@ static void buildSerialIteratorFn(FnSymbol* fn, const char* iteratorName,
 {
   FnSymbol* sifn = new FnSymbol(iteratorName);
   sifn->addFlag(FLAG_ITERATOR_FN);
-  ArgSymbol* sifnIterator = new ArgSymbol(INTENT_BLANK, "iterator", dtAny);
+  ArgSymbol* sifnIterator = makeArgSymbol(INTENT_BLANK, "iterator", dtAny);
   sifn->insertFormalAtTail(sifnIterator);
   fn->insertAtHead(new DefExpr(sifn));
   stmt = new CallExpr(PRIM_YIELD, expr);
@@ -783,10 +783,10 @@ static void buildLeaderIteratorFn(FnSymbol* fn, const char* iteratorName,
   Expr* tag = buildDotExpr(buildDotExpr(new UnresolvedSymExpr("ChapelBase"),
                                         iterKindTypename),
                            iterKindLeaderTagname);
-  ArgSymbol* lifnTag = new ArgSymbol(INTENT_PARAM, "tag", dtUnknown,
+  ArgSymbol* lifnTag = makeArgSymbol(INTENT_PARAM, "tag", dtUnknown,
                                      new CallExpr(PRIM_TYPEOF, tag));
   lifn->insertFormalAtTail(lifnTag);
-  ArgSymbol* lifnIterator = new ArgSymbol(INTENT_BLANK, "iterator", dtAny);
+  ArgSymbol* lifnIterator = makeArgSymbol(INTENT_BLANK, "iterator", dtAny);
   lifn->insertFormalAtTail(lifnIterator);
 
   lifn->where = new BlockStmt(new CallExpr("==", lifnTag, tag->copy()));
@@ -817,12 +817,12 @@ static FnSymbol* buildFollowerIteratorFn(FnSymbol* fn, const char* iteratorName,
 
   Expr* tag = buildDotExpr(buildDotExpr(new UnresolvedSymExpr("ChapelBase"),
                                   iterKindTypename), iterKindFollowerTagname);
-  ArgSymbol* fifnTag = new ArgSymbol(INTENT_PARAM, "tag", dtUnknown,
+  ArgSymbol* fifnTag = makeArgSymbol(INTENT_PARAM, "tag", dtUnknown,
                                      new CallExpr(PRIM_TYPEOF, tag));
   fifn->insertFormalAtTail(fifnTag);
-  ArgSymbol* fifnFollower = new ArgSymbol(INTENT_BLANK, iterFollowthisArgname, dtAny);
+  ArgSymbol* fifnFollower = makeArgSymbol(INTENT_BLANK, iterFollowthisArgname, dtAny);
   fifn->insertFormalAtTail(fifnFollower);
-  ArgSymbol* fifnIterator = new ArgSymbol(INTENT_BLANK, "iterator", dtAny);
+  ArgSymbol* fifnIterator = makeArgSymbol(INTENT_BLANK, "iterator", dtAny);
   fifn->insertFormalAtTail(fifnIterator);
 
   fifn->where = new BlockStmt(new CallExpr("==", fifnTag, tag->copy()));
@@ -1674,7 +1674,7 @@ buildClassDefExpr(const char* name,
 
 DefExpr*
 buildArgDefExpr(IntentTag tag, const char* ident, Expr* type, Expr* init, Expr* variable) {
-  ArgSymbol* arg = new ArgSymbol(tag, ident, dtUnknown, type, init, variable);
+  ArgSymbol* arg = makeArgSymbol(tag, ident, dtUnknown, type, init, variable);
   if (arg->intent == INTENT_TYPE) {
     type = NULL;
     arg->intent = INTENT_BLANK;
@@ -1695,7 +1695,7 @@ buildArgDefExpr(IntentTag tag, const char* ident, Expr* type, Expr* init, Expr* 
 //
 DefExpr*
 buildTupleArgDefExpr(IntentTag tag, BlockStmt* tuple, Expr* type, Expr* init) {
-  ArgSymbol* arg = new ArgSymbol(tag, "chpl__tuple_arg_temp", dtUnknown,
+  ArgSymbol* arg = makeArgSymbol(tag, "chpl__tuple_arg_temp", dtUnknown,
                                  type, init, tuple);
   arg->addFlag(FLAG_TEMP);
   if (arg->intent != INTENT_BLANK)
@@ -1784,7 +1784,7 @@ buildFunctionSymbol(FnSymbol*   fn,
 
   if (class_name)
   {
-    fn->_this = new ArgSymbol(thisTag,
+    fn->_this = makeArgSymbol(thisTag,
                               "this",
                               dtUnknown,
                               new UnresolvedSymExpr(class_name));
@@ -1792,7 +1792,7 @@ buildFunctionSymbol(FnSymbol*   fn,
     fn->_this->addFlag(FLAG_ARG_THIS);
     fn->insertFormalAtHead(new DefExpr(fn->_this));
 
-    ArgSymbol* mt = new ArgSymbol(INTENT_BLANK, "_mt", dtMethodToken);
+    ArgSymbol* mt = makeArgSymbol(INTENT_BLANK, "_mt", dtMethodToken);
 
     fn->addFlag(FLAG_METHOD);
     fn->insertFormalAtHead(new DefExpr(mt));
@@ -1818,7 +1818,7 @@ buildFunctionDecl(FnSymbol*   fn,
     if (fn->hasFlag(FLAG_EXTERN))
       USR_FATAL_CONT(fn, "Extern functions cannot be setters.");
 
-    fn->setter = new DefExpr(new ArgSymbol(INTENT_BLANK, "setter", dtBool));
+    fn->setter = new DefExpr(makeArgSymbol(INTENT_BLANK, "setter", dtBool));
   }
 
   if (optRetType)

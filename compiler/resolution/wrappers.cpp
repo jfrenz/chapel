@@ -727,7 +727,7 @@ buildPromotionWrapper(FnSymbol* fn,
       if (Symbol* s = paramMap.get(e->key))
         paramMap.put(e->value, s);
     }
-    ArgSymbol* lifnTag = new ArgSymbol(INTENT_PARAM, "tag", gLeaderTag->type);
+    ArgSymbol* lifnTag = makeArgSymbol(INTENT_PARAM, "tag", gLeaderTag->type);
     lifn->addFlag(FLAG_INLINE_ITERATOR); // Leader iterators are always inlined.
     lifn->insertFormalAtTail(lifnTag);
     lifn->where = new BlockStmt(new CallExpr("==", lifnTag, gLeaderTag));
@@ -758,9 +758,9 @@ buildPromotionWrapper(FnSymbol* fn,
       if (Symbol* s = paramMap.get(e->key))
         paramMap.put(e->value, s);
     }
-    ArgSymbol* fifnTag = new ArgSymbol(INTENT_PARAM, "tag", gFollowerTag->type);
+    ArgSymbol* fifnTag = makeArgSymbol(INTENT_PARAM, "tag", gFollowerTag->type);
     fifn->insertFormalAtTail(fifnTag);
-    ArgSymbol* fifnFollower = new ArgSymbol(INTENT_BLANK, iterFollowthisArgname, dtAny);
+    ArgSymbol* fifnFollower = makeArgSymbol(INTENT_BLANK, iterFollowthisArgname, dtAny);
     fifn->insertFormalAtTail(fifnFollower);
     fifn->where = new BlockStmt(new CallExpr("==", fifnTag, gFollowerTag));
     VarSymbol* followerIterator = newTemp("p_followerIterator");

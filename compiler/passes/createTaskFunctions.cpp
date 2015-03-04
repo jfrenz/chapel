@@ -52,7 +52,7 @@ ArgSymbol* tiMarkForIntent(IntentTag intent) {
 }
 
 #define tiMarkAdd(intent, mark) \
-  mark = new ArgSymbol(intent, #mark, dtVoid); \
+  mark = makeArgSymbol(intent, #mark, dtVoid); \
   tiMarkHost->insertFormalAtTail(mark);
 // does not work: rootModule->block->insertAtTail(new DefExpr(mark));
 
@@ -221,7 +221,7 @@ addVarsToFormals(FnSymbol* fn, SymbolMap& vars) {
           argTag = tiMarker->intent;
         else
           INT_ASSERT(e->value == markUnspecified);
-        ArgSymbol* arg = new ArgSymbol(argTag, sym->name, sym->type);
+        ArgSymbol* arg = makeArgSymbol(argTag, sym->name, sym->type);
         if (ArgSymbol* symArg = toArgSymbol(sym))
           if (symArg->hasFlag(FLAG_MARKED_GENERIC))
             arg->addFlag(FLAG_MARKED_GENERIC);
@@ -369,7 +369,7 @@ void createTaskFunctions(void) {
           fn->addFlag(FLAG_COBEGIN_OR_COFORALL);
         }
 
-        ArgSymbol* arg = new ArgSymbol(INTENT_CONST_IN, "dummy_locale_arg", dtLocaleID);
+        ArgSymbol* arg = makeArgSymbol(INTENT_CONST_IN, "dummy_locale_arg", dtLocaleID);
         fn->insertFormalAtTail(arg);
       }
       else if (info->isPrimitive(PRIM_BLOCK_LOCAL) ||

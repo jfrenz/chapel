@@ -373,7 +373,7 @@ static void create_block_fn_wrapper(FnSymbol* fn, CallExpr* fcall, BundleArgsFnD
     wrap_fn->insertFormalAtTail(localeArg);
   }
 
-  ArgSymbol *wrap_c = new ArgSymbol( INTENT_CONST_REF, "c", ctype);
+  ArgSymbol *wrap_c = makeArgSymbol( INTENT_CONST_REF, "c", ctype);
   wrap_fn->insertFormalAtTail(wrap_c);
 
   mod->block->insertAtTail(new DefExpr(wrap_fn));
@@ -452,7 +452,7 @@ insertEndCount(FnSymbol* fn,
     endCountMap.put(fn, var);
     queue.add(fn);
   } else {
-    ArgSymbol* arg = new ArgSymbol(INTENT_CONST_REF, "_endCount", endCountType);
+    ArgSymbol* arg = makeArgSymbol(INTENT_CONST_REF, "_endCount", endCountType);
     fn->insertFormalAtTail(arg);
     VarSymbol* var = newTemp("_endCount", endCountType);
     fn->insertAtHead(new CallExpr(PRIM_MOVE, var, arg));

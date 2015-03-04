@@ -224,14 +224,21 @@ private:
 *                                                                   *
 ********************************* | ********************************/
 
+ArgSymbol* makeArgSymbol(IntentTag   iIntent,
+                         const char* iName,
+                         Type*       iType,
+                         Expr*       iTypeExpr     = NULL,
+                         Expr*       iDefaultExpr  = NULL,
+                         Expr*       iVariableExpr = NULL);
+
 class ArgSymbol : public LcnSymbol {
 public:
   ArgSymbol(IntentTag   iIntent,
             const char* iName,
             Type*       iType,
-            Expr*       iTypeExpr     = NULL,
-            Expr*       iDefaultExpr  = NULL,
-            Expr*       iVariableExpr = NULL);
+            Expr*       iTypeExpr,
+            Expr*       iDefaultExpr,
+            Expr*       iVariableExpr);
 
   // Interface for BaseAST
   virtual GenRet  codegen();

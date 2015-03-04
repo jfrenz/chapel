@@ -689,9 +689,9 @@ protoIteratorMethod(IteratorInfo* ii, const char* name, Type* retType) {
   fn->addFlag(FLAG_AUTO_II);
   if (strcmp(name, "advance"))
     fn->addFlag(FLAG_INLINE);
-  fn->insertFormalAtTail(new ArgSymbol(INTENT_BLANK, "_mt", dtMethodToken));
+  fn->insertFormalAtTail(makeArgSymbol(INTENT_BLANK, "_mt", dtMethodToken));
   fn->addFlag(FLAG_METHOD);
-  fn->_this = new ArgSymbol(INTENT_BLANK, "this", ii->iclass);
+  fn->_this = makeArgSymbol(INTENT_BLANK, "this", ii->iclass);
   fn->_this->addFlag(FLAG_ARG_THIS);
   fn->retType = retType;
   fn->insertFormalAtTail(fn->_this);
@@ -758,7 +758,7 @@ protoIteratorClass(FnSymbol* fn) {
   ii->getIterator->addFlag(FLAG_AUTO_II);
   ii->getIterator->addFlag(FLAG_INLINE);
   ii->getIterator->retType = ii->iclass;
-  ii->getIterator->insertFormalAtTail(new ArgSymbol(INTENT_BLANK, "ir", ii->irecord));
+  ii->getIterator->insertFormalAtTail(makeArgSymbol(INTENT_BLANK, "ir", ii->irecord));
   VarSymbol* ret = newTemp("_ic_", ii->iclass);
   ii->getIterator->insertAtTail(new DefExpr(ret));
   CallExpr* icAllocCall = callChplHereAlloc(ret->typeInfo()->symbol);
@@ -3978,9 +3978,9 @@ static AggregateType* createAndInsertFunParentClass(CallExpr *call, const char *
 static FnSymbol* createAndInsertFunParentMethod(CallExpr *call, AggregateType *parent, AList &arg_list, bool isFormal, Type *retType) {
   FnSymbol* parent_method = new FnSymbol("this");
   parent_method->addFlag(FLAG_FIRST_CLASS_FUNCTION_INVOCATION);
-  parent_method->insertFormalAtTail(new ArgSymbol(INTENT_BLANK, "_mt", dtMethodToken));
+  parent_method->insertFormalAtTail(makeArgSymbol(INTENT_BLANK, "_mt", dtMethodToken));
   parent_method->addFlag(FLAG_METHOD);
-  ArgSymbol* thisParentSymbol = new ArgSymbol(INTENT_BLANK, "this", parent);
+  ArgSymbol* thisParentSymbol = makeArgSymbol(INTENT_BLANK, "this", parent);
   thisParentSymbol->addFlag(FLAG_ARG_THIS);
   parent_method->insertFormalAtTail(thisParentSymbol);
   parent_method->_this = thisParentSymbol;
@@ -3995,7 +3995,7 @@ static FnSymbol* createAndInsertFunParentMethod(CallExpr *call, AggregateType *p
       ArgSymbol* fArg = toArgSymbol(dExp->sym);
 
       if (fArg->type != dtVoid) {
-        ArgSymbol* newFormal = new ArgSymbol(INTENT_BLANK, fArg->name, fArg->type);
+        ArgSymbol* newFormal = makeArgSymbol(INTENT_BLANK, fArg->name, fArg->type);
         if (fArg->typeExpr)
           newFormal->typeExpr = fArg->typeExpr->copy();
 
@@ -4012,7 +4012,7 @@ static FnSymbol* createAndInsertFunParentMethod(CallExpr *call, AggregateType *p
       if (i != (alength-1)) {
         SymExpr* sExpr = toSymExpr(actualExpr);
         if (sExpr->var->type != dtVoid) {
-          ArgSymbol* newFormal = new ArgSymbol(INTENT_BLANK, name_buffer, sExpr->var->type);
+          ArgSymbol* newFormal = makeArgSymbol(INTENT_BLANK, name_buffer, sExpr->var->type);
 
           parent_method->insertFormalAtTail(newFormal);
         }
@@ -4187,9 +4187,9 @@ createFunctionAsValue(CallExpr *call) {
 
   FnSymbol *thisMethod = new FnSymbol("this");
   thisMethod->addFlag(FLAG_FIRST_CLASS_FUNCTION_INVOCATION);
-  thisMethod->insertFormalAtTail(new ArgSymbol(INTENT_BLANK, "_mt", dtMethodToken));
+  thisMethod->insertFormalAtTail(makeArgSymbol(INTENT_BLANK, "_mt", dtMethodToken));
   thisMethod->addFlag(FLAG_METHOD);
-  ArgSymbol *thisSymbol = new ArgSymbol(INTENT_BLANK, "this", ct);
+  ArgSymbol *thisSymbol = makeArgSymbol(INTENT_BLANK, "this", ct);
   thisSymbol->addFlag(FLAG_ARG_THIS);
   thisMethod->insertFormalAtTail(thisSymbol);
   thisMethod->_this = thisSymbol;
@@ -4207,7 +4207,7 @@ createFunctionAsValue(CallExpr *call) {
     DefExpr* dExp = toDefExpr(formalExpr);
     ArgSymbol* fArg = toArgSymbol(dExp->sym);
 
-    ArgSymbol* newFormal = new ArgSymbol(INTENT_BLANK, fArg->name, fArg->type);
+    ArgSymbol* newFormal = makeArgSymbol(INTENT_BLANK, fArg->name, fArg->type);
     if (fArg->typeExpr)
       newFormal->typeExpr = fArg->typeExpr->copy();
     SymExpr* argSym = new SymExpr(newFormal);

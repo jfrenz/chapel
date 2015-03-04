@@ -434,8 +434,8 @@ createArgBundleFreeFn(AggregateType* ct, FnSymbol* loopBodyFnWrapper) {
   if (argBundleFreeFn == NULL) {
     // Create the shared function that frees recursive argument bundles.
     argBundleFreeFn = new FnSymbol("chpl__freeRecursiveIteratorArgumentBundle");
-    argBundleFreeFn->insertFormalAtTail(new ArgSymbol(INTENT_CONST_IN, "loopBodyFnID", dtInt[INT_SIZE_DEFAULT]));
-    argBundleFreeFn->insertFormalAtTail(new ArgSymbol(INTENT_CONST_IN, "loopBodyFnArgs", argBundleType));
+    argBundleFreeFn->insertFormalAtTail(makeArgSymbol(INTENT_CONST_IN, "loopBodyFnID", dtInt[INT_SIZE_DEFAULT]));
+    argBundleFreeFn->insertFormalAtTail(makeArgSymbol(INTENT_CONST_IN, "loopBodyFnArgs", argBundleType));
     argBundleFreeFn->insertAtTail(callChplHereFree(argBundleFreeFn->getFormal(2)));
     argBundleFreeFn->insertAtTail(new CallExpr(PRIM_RETURN, gVoid));
     argBundleFreeFn->retType = dtVoid;
@@ -526,8 +526,8 @@ createArgBundleCopyFn(AggregateType* ct, FnSymbol* loopBodyFnWrapper) {
     //    return tmp;
     //  }
     argBundleCopyFn = new FnSymbol("chpl__copyRecursiveIteratorArgumentBundle");
-    argBundleCopyFn->insertFormalAtTail(new ArgSymbol(INTENT_CONST_IN, "loopBodyFnID", dtInt[INT_SIZE_DEFAULT]));
-    argBundleCopyFn->insertFormalAtTail(new ArgSymbol(INTENT_CONST_IN, "loopBodyFnArgs", argBundleType));
+    argBundleCopyFn->insertFormalAtTail(makeArgSymbol(INTENT_CONST_IN, "loopBodyFnID", dtInt[INT_SIZE_DEFAULT]));
+    argBundleCopyFn->insertFormalAtTail(makeArgSymbol(INTENT_CONST_IN, "loopBodyFnArgs", argBundleType));
     Symbol* tmp = newTemp("dummyBundle", argBundleType);
     argBundleCopyFn->insertAtTail(new DefExpr(tmp));
     argBundleCopyFn->insertAtTail(new CallExpr(PRIM_MOVE, tmp, gNil));
@@ -645,7 +645,7 @@ bundleLoopBodyFnArgsForIteratorFnCall(CallExpr* iteratorFnCall,
   // }
   ArgSymbol* wrapperIndexArg = loopBodyFn->getFormal(1)->copy();
   loopBodyFnWrapper->insertFormalAtTail(wrapperIndexArg);
-  ArgSymbol* wrapperArgsArg = new ArgSymbol(INTENT_CONST_IN, "fn_args", ct);
+  ArgSymbol* wrapperArgsArg = makeArgSymbol(INTENT_CONST_IN, "fn_args", ct);
   loopBodyFnWrapper->insertFormalAtTail(wrapperArgsArg);
   CallExpr* loopBodyFnWrapperCall = new CallExpr(loopBodyFn, wrapperIndexArg);
 
@@ -903,9 +903,9 @@ static void threadLoopBodyFnArgs(CallExpr* call,
     loopBodyFnArgsSuppliedMap.put(origTFn, copyTFn);
 
     // Add the formals, created just like in createIteratorFn().
-    ArgSymbol* newIdArg = new ArgSymbol(INTENT_CONST_IN, loopBodyFnIDArg->name, loopBodyFnIDArg->type);
+    ArgSymbol* newIdArg = makeArgSymbol(INTENT_CONST_IN, loopBodyFnIDArg->name, loopBodyFnIDArg->type);
     copyTFn->insertFormalAtTail(newIdArg);
-    ArgSymbol* newArgArgs = new ArgSymbol(INTENT_CONST_IN, loopBodyFnArgArgs->name, loopBodyFnArgArgs->type);
+    ArgSymbol* newArgArgs = makeArgSymbol(INTENT_CONST_IN, loopBodyFnArgArgs->name, loopBodyFnArgArgs->type);
     copyTFn->insertFormalAtTail(newArgArgs);
 
     *newIdArgP = newIdArg;
@@ -1014,12 +1014,12 @@ createIteratorFn(FnSymbol* iterator, CallExpr* iteratorFnCall, Symbol* index,
   iterator->defPoint->insertBefore(new DefExpr(iteratorFn));
   Vec<BaseAST*> asts;
   collect_asts(iteratorFn, asts);
-  ArgSymbol* icArg = new ArgSymbol(blankIntentForType(ic->type), "_ic", ic->type);
+  ArgSymbol* icArg = makeArgSymbol(blankIntentForType(ic->type), "_ic", ic->type);
   iteratorFn->insertFormalAtTail(icArg);
   replaceIteratorFormalsWithIteratorFields(iterator, icArg, asts);
-  ArgSymbol* loopBodyFnIDArg = new ArgSymbol(INTENT_CONST_IN, "_loopBodyFnID", dtInt[INT_SIZE_DEFAULT]);
+  ArgSymbol* loopBodyFnIDArg = makeArgSymbol(INTENT_CONST_IN, "_loopBodyFnID", dtInt[INT_SIZE_DEFAULT]);
   iteratorFn->insertFormalAtTail(loopBodyFnIDArg);
-  ArgSymbol* loopBodyFnArgArgs = new ArgSymbol(INTENT_CONST_IN, "_loopBodyFnArgs", argsBundleType);
+  ArgSymbol* loopBodyFnArgArgs = makeArgSymbol(INTENT_CONST_IN, "_loopBodyFnArgs", argsBundleType);
   iteratorFn->insertFormalAtTail(loopBodyFnArgArgs);
 
   localizeReturnSymbols(iteratorFn, asts);
@@ -1048,7 +1048,7 @@ expandRecursiveIteratorInline(ForLoop* forLoop)
 
   // The index is passed to the loop body function as its first argument.
   Symbol*    index             = forLoop->indexGet()->var;
-  ArgSymbol* indexArg          = new ArgSymbol(blankIntentForType(index->type), "_index", index->type);
+  ArgSymbol* indexArg          = makeArgSymbol(blankIntentForType(index->type), "_index", index->type);
 
   // The recursive iterator loop wrapper is ... .
   FnSymbol*  loopBodyFnWrapper = new FnSymbol(astr("_rec_iter_loop_wrapper_", parent->name));

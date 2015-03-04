@@ -541,11 +541,11 @@ addDeclaration(AggregateType* ct, DefExpr* def, bool tail) {
          "Type binding clauses ('%s.' in this case) are not supported in "
          "declarations within a class, record or union", name);
     } else {
-      fn->_this = new ArgSymbol(fn->thisTag, "this", ct);
+      fn->_this = makeArgSymbol(fn->thisTag, "this", ct);
       fn->_this->addFlag(FLAG_ARG_THIS);
       fn->insertFormalAtHead(new DefExpr(fn->_this));
       fn->insertFormalAtHead(
-          new DefExpr(new ArgSymbol(INTENT_BLANK, "_mt", dtMethodToken)));
+          new DefExpr(makeArgSymbol(INTENT_BLANK, "_mt", dtMethodToken)));
       fn->addFlag(FLAG_METHOD);
       fn->addFlag(FLAG_METHOD_PRIMARY);
     }
