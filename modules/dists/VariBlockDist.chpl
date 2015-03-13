@@ -125,6 +125,9 @@ config param enableVariBlockTimings = true;
 //                        task created
 //
 class VariBlock : BaseDist {
+  var timer: VariBlockTimers.VB_TimerBase_Dmap;
+  var policy;
+  
   param rank: int;
   type idxType = int;
   var boundingBox: domain(rank, idxType);
@@ -135,8 +138,6 @@ class VariBlock : BaseDist {
   var dataParIgnoreRunningTasks: bool;
   var dataParMinGranularity: int;
   var pid: int = -1; // privatized object id (this should be factored out)
-  
-  var timer: VariBlockTimers.VB_TimerBase_Dmap;
 }
 
 //
@@ -163,10 +164,12 @@ class LocVariBlock {
 // whole:     a non-distributed domain that defines the domain's indices
 //
 class VariBlockDom: BaseRectangularDom {
+  type policyType;
+  
   param rank: int;
   type idxType;
   param stridable: bool;
-  const dist: VariBlock(rank, idxType);
+  const dist: VariBlock(policyType, rank, idxType);
   var locDoms: [dist.targetLocDom] LocVariBlockDom(rank, idxType, stridable);
   var whole: domain(rank=rank, idxType=idxType, stridable=stridable);
   var pid: int = -1; // privatized object id (this should be factored out)
@@ -201,12 +204,14 @@ class LocVariBlockDom {
 // myLocArr: optimized reference to here's local array class (or nil)
 //
 class VariBlockArr: BaseArr {
+  type policyType;
+  
   type eltType;
   param rank: int;
   type idxType;
   param stridable: bool;
   var doRADOpt: bool = defaultDoRADOpt;
-  var dom: VariBlockDom(rank, idxType, stridable);
+  var dom: VariBlockDom(policyType, rank, idxType, stridable);
   var locArr: [dom.dist.targetLocDom] LocVariBlockArr(eltType, rank, idxType, stridable);
   var myLocArr: LocVariBlockArr(eltType, rank, idxType, stridable);
   var pid: int = -1; // privatized object id (this should be factored out)
@@ -233,7 +238,8 @@ class LocVariBlockArr {
   var myElems: [locDom.myVariBlock] eltType;
   var locRADLock: atomicflag; // This will only be accessed locally
                               // force the use of processor atomics
-
+  
+  
   // These function will always be called on this.locale, and so we do
   // not have an on statement around the while loop below (to avoid
   // the repeated on's from calling testAndSet()).
@@ -251,8 +257,10 @@ class LocVariBlockArr {
 //
 proc VariBlock.VariBlock(boundingBox: domain,
                 targetLocales: [] locale = Locales,
-                /*balancer,*/
+                
+                policy = 42:int,
                 timer: VariBlockTimers.VB_TimerBase_Dmap = nil,
+                
                 dataParTasksPerLocale=getDataParTasksPerLocale(),
                 dataParIgnoreRunningTasks=getDataParIgnoreRunningTasks(),
                 dataParMinGranularity=getDataParMinGranularity(),
@@ -307,6 +315,7 @@ proc VariBlock.dsiAssign(other: this.type) {
   dataParIgnoreRunningTasks = other.dataParIgnoreRunningTasks;
   dataParMinGranularity = other.dataParMinGranularity;
   
+  policy = other.policy;
   timer = if enableVariBlockTimings && other.timer != nil then
             other.timer.getNewDmapTimer()
           else
@@ -322,7 +331,7 @@ proc VariBlock.dsiAssign(other: this.type) {
 }
 
 proc VariBlock.dsiClone() {
-  return new VariBlock(boundingBox, targetLocales, timer,
+  return new VariBlock(boundingBox, targetLocales, policy, timer,
                    dataParTasksPerLocale, dataParIgnoreRunningTasks,
                    dataParMinGranularity);
 }
@@ -360,7 +369,7 @@ proc VariBlock.dsiNewRectangularDom(param rank: int, type idxType,
   if rank != this.rank then
     compilerError("VariBlock domain rank does not match distribution's");
 
-  var dom = new VariBlockDom(rank=rank, idxType=idxType, dist=this, stridable=stridable, timer=this.makeDomainTimer());
+  var dom = new VariBlockDom(policyType=policy.type, rank=rank, idxType=idxType, dist=this, stridable=stridable, timer=this.makeDomainTimer());
   dom.setup();
   if debugVariBlockDist {
     writeln("Creating new VariBlock domain:");
@@ -782,7 +791,7 @@ proc VariBlockDom.dsiSerialWrite(x:Writer) {
 // how to allocate a new array over this domain
 //
 proc VariBlockDom.dsiBuildArray(type eltType) {      
-  var arr = new VariBlockArr(eltType=eltType, rank=rank, idxType=idxType, stridable=stridable, dom=this);
+  var arr = new VariBlockArr(policyType=policyType, eltType=eltType, rank=rank, idxType=idxType, stridable=stridable, dom=this);
   arr.setup();
   return arr;
 }
@@ -870,7 +879,7 @@ proc VariBlockDom.dsiBuildRectangularDom(param rank: int, type idxType,
   if rank != dist.rank then
     compilerError("VariBlock domain rank does not match distribution's");
 
-  var dom = new VariBlockDom(rank=rank, idxType=idxType,
+  var dom = new VariBlockDom(policyType=policyType, rank=rank, idxType=idxType,
                          dist=dist, stridable=stridable, timer=dist.makeDomainTimer());
   dom.dsiSetIndices(ranges);
   return dom;
@@ -1123,7 +1132,7 @@ proc VariBlockArr.dsiSerialWrite(f: Writer) {
 }
 
 proc VariBlockArr.dsiSlice(d: VariBlockDom) {
-  var alias = new VariBlockArr(eltType=eltType, rank=rank, idxType=idxType, stridable=d.stridable, dom=d);
+  var alias = new VariBlockArr(policyType=policyType, eltType=eltType, rank=rank, idxType=idxType, stridable=d.stridable, dom=d);
   var thisid = this.locale.id;
   coforall i in d.dist.targetLocDom {
     on d.dist.targetLocales(i) {
@@ -1278,7 +1287,8 @@ proc LocVariBlockArr.this(i) ref {
 //
 proc VariBlock.VariBlock(other: VariBlock, privateData,
                 param rank = other.rank,
-                type idxType = other.idxType) {
+                type idxType = other.idxType,
+                policy = other.policy) {
   boundingBox = {(...privateData(1))};
   targetLocDom = {(...privateData(2))};
   dataParTasksPerLocale = privateData(3);
@@ -1313,6 +1323,7 @@ proc VariBlock.dsiReprivatize(other, reprivatizeData) {
   dataParTasksPerLocale = other.dataParTasksPerLocale;
   dataParIgnoreRunningTasks = other.dataParIgnoreRunningTasks;
   dataParMinGranularity = other.dataParMinGranularity;
+  policy = other.policy;
 }
 
 proc VariBlockDom.dsiSupportsPrivatization() param return true;
@@ -1321,7 +1332,7 @@ proc VariBlockDom.dsiGetPrivatizeData() return (dist.pid, whole.dims());
 
 proc VariBlockDom.dsiPrivatize(privatizeData) {
   var privdist = chpl_getPrivatizedCopy(dist.type, privatizeData(1));
-  var c = new VariBlockDom(rank=rank, idxType=idxType, stridable=stridable, dist=privdist, timer=timer);
+  var c = new VariBlockDom(policyType=policyType, rank=rank, idxType=idxType, stridable=stridable, dist=privdist, timer=timer);
   for i in c.dist.targetLocDom do
     c.locDoms(i) = locDoms(i);
   c.whole = {(...privatizeData(2))};
@@ -1342,7 +1353,7 @@ proc VariBlockArr.dsiGetPrivatizeData() return dom.pid;
 
 proc VariBlockArr.dsiPrivatize(privatizeData) {
   var privdom = chpl_getPrivatizedCopy(dom.type, privatizeData);
-  var c = new VariBlockArr(eltType=eltType, rank=rank, idxType=idxType, stridable=stridable, dom=privdom);
+  var c = new VariBlockArr(policyType=policyType, eltType=eltType, rank=rank, idxType=idxType, stridable=stridable, dom=privdom);
   for localeIdx in c.dom.dist.targetLocDom {
     c.locArr(localeIdx) = locArr(localeIdx);
     if c.locArr(localeIdx).locale.id == here.id then
