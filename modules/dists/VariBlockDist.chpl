@@ -42,6 +42,8 @@ use ChapelUtil;
 use CommDiagnostics;
 
 use VariBlockTimers;
+use Time;
+
 
 //
 // These flags are used to output debug information and run extra
@@ -75,7 +77,8 @@ config param testFastFollowerOptimization = false;
 //
 // This flag is used to disable lazy initialization of the RAD cache.
 //
-config param disableVariBlockLazyRAD = defaultDisableLazyRADOpt;
+//config param disableVariBlockLazyRAD = defaultDisableLazyRADOpt;
+config param disableVariBlockLazyRAD = true;
 
 // Disabling timing support when not needed improves performance a bit.
 config param enableVariBlockTimings = true;
@@ -127,6 +130,7 @@ config param enableVariBlockTimings = true;
 class VariBlock : BaseDist {
   var timer: VariBlockTimers.VB_TimerBase_Dmap;
   var policy;
+  var indexer: policy.indexerType;
   
   param rank: int;
   type idxType = int;
@@ -256,9 +260,8 @@ class LocVariBlockArr {
 // VariBlock constructor for clients of the VariBlock distribution
 //
 proc VariBlock.VariBlock(boundingBox: domain,
-                targetLocales: [] locale = Locales,
                 
-                policy = 42:int,
+                policy,
                 timer: VariBlockTimers.VB_TimerBase_Dmap = nil,
                 
                 dataParTasksPerLocale=getDataParTasksPerLocale(),
@@ -271,22 +274,31 @@ proc VariBlock.VariBlock(boundingBox: domain,
   if idxType != boundingBox.idxType then
     compilerError("specified VariBlock index type != index type of specified bounding box");
   
+  if !isClass(policy) then {
+    compilerError("Policy must be of class type");
+  }
+  
+  if policy == nil then {
+    halt("Policy must no be nil");
+  }
+  
   this.timer = if enableVariBlockTimings && timer != nil then
                  timer.getNewDmapTimer()
                else
                  nil;
-    
+  
   
   this.boundingBox = boundingBox;
-
-  setupTargetLocalesArray(targetLocDom, this.targetLocales, targetLocales);
-
+  
+  policy.setupArrays(this.targetLocDom, this.targetLocales);
+  
+  indexer = policy.makeIndexer();
+  
   const boundingBoxDims = boundingBox.dims();
   const targetLocDomDims = targetLocDom.dims();
   coforall locid in targetLocDom do
     on this.targetLocales(locid) do
-      locDist(locid) =  new LocVariBlock(rank, idxType, locid, boundingBoxDims,
-                                     targetLocDomDims);
+      locDist(locid) =  new LocVariBlock(policy.computeChunk(locid));
 
   // NOTE: When these knobs stop using the global defaults, we will need
   // to add checks to make sure dataParTasksPerLocale<0 and
@@ -315,7 +327,10 @@ proc VariBlock.dsiAssign(other: this.type) {
   dataParIgnoreRunningTasks = other.dataParIgnoreRunningTasks;
   dataParMinGranularity = other.dataParMinGranularity;
   
+  
   policy = other.policy;
+  indexer = policy.makeIndexer();
+  
   timer = if enableVariBlockTimings && other.timer != nil then
             other.timer.getNewDmapTimer()
           else
@@ -326,12 +341,11 @@ proc VariBlock.dsiAssign(other: this.type) {
 
   coforall locid in targetLocDom do
     on targetLocales(locid) do
-      locDist(locid) = new LocVariBlock(rank, idxType, locid, boundingBoxDims,
-                                    targetLocDomDims);
+      locDist(locid) = new LocVariBlock(policy.computeChunk(locid));
 }
 
 proc VariBlock.dsiClone() {
-  return new VariBlock(boundingBox, targetLocales, policy, timer,
+  return new VariBlock(boundingBox, policy, timer,
                    dataParTasksPerLocale, dataParIgnoreRunningTasks,
                    dataParMinGranularity);
 }
@@ -428,10 +442,18 @@ proc VariBlock.getChunk(inds, locid) {
 //
 // get the index into the targetLocales array for a given distributed index
 //
+
+
 proc VariBlock.targetLocsIdx(ind: idxType) where rank == 1 {
   return targetLocsIdx((ind,));
 }
 
+proc VariBlock.targetLocsIdx(ind: rank*idxType){
+  return indexer.targetLocIdx(ind);
+}
+
+
+/*
 proc VariBlock.targetLocsIdx(ind: rank*idxType) {
   var result: rank*int;
   for param i in 1..rank do
@@ -441,128 +463,13 @@ proc VariBlock.targetLocsIdx(ind: rank*idxType) {
                             boundingBox.dim(i).length):int));
   return if rank == 1 then result(1) else result;
 }
-/*
-proc VariBlock.dsiCreateReindexDist(newSpace, oldSpace) {
-  proc anyStridable(space, param i=1) param
-    return if i == space.size then space(i).stridable
-           else space(i).stridable || anyStridable(space, i+1);
-
-  // Should this error be in ChapelArray or not an error at all?
-  if newSpace(1).idxType != oldSpace(1).idxType then
-    compilerError("index type of reindex domain must match that of original domain");
-  if anyStridable(newSpace) || anyStridable(oldSpace) then
-    compilerWarning("reindexing stridable VariBlock arrays is not yet fully supported");
-*/
-  /* To shift the bounding box, we must perform the following operation for
-   *  each dimension:
-   *
-   *   bbox(r).low - (oldSpace(r).low - newSpace(r).low)
-   *   bbox(r).high - (oldSpace(r).low - newSpace(r).low)
-   *
-   * The following is guaranteed on entry:
-   *
-   *   oldSpace(r).low-newSpace(r).low = oldSpace(r).high-newSpace(r).high
-   *
-   * We need to be able to do this without going out of range of the index
-   *  type.  The approach we take is to check if there is a way to perform
-   *  the calculation without having any of the intermediate results go out
-   *  of range.
-   *
-   *    newBbLow = bbLow - (oldLow - newLow)
-   *    newBbLow = bbLow - oldLow + newLow
-   *
-   * Can be performed as:
-   *
-   *    t = oldLow-newLow;
-   *    newBbLow = bbLow-t;
-   * or
-   *    t = bbLow-oldLow;
-   *    newBbLow = t+newLow;
-   * or
-   *    t = bbLow+newLow;
-   *    newBbLow = t-oldLow;
-   *
-   *//*
-  proc adjustBound(bbound, oldBound, newBound) {
-    var t: bbound.type;
-    if safeSub(oldBound, newBound) {
-      t = oldBound-newBound;
-      if safeSub(bbound, t) {
-        return (bbound-t, true);
-      }
-    }
-    if safeSub(bbound, oldBound) {
-      t = bbound-oldBound;
-      if safeAdd(t, newBound) {
-        return (t+newBound, true);
-      }
-    }
-    if safeAdd(bbound, newBound) {
-      t = bbound+newBound;
-      if safeSub(t, oldBound) {
-        return(t-oldBound, true);
-      }
-    }
-    return (bbound, false);
-  }
-
-  var myNewBbox = boundingBox.dims();
-  for param r in 1..rank {
-    var oldLow = oldSpace(r).low;
-    var newLow = newSpace(r).low;
-    var oldHigh = oldSpace(r).high;
-    var newHigh = newSpace(r).high;
-    var valid: bool;
-    if oldLow != newLow {
-      (myNewBbox(r)._low,valid) = adjustBound(myNewBbox(r).low,oldLow,newLow);
-      if !valid then // try with high
-        (myNewBbox(r)._low,valid) = adjustBound(myNewBbox(r).low,oldHigh,newHigh);
-      if !valid then
-        halt("invalid reindex for VariBlock: distribution bounding box (low) out of range in dimension ", r);
-
-      (myNewBbox(r)._high,valid) = adjustBound(myNewBbox(r).high,oldHigh,newHigh);
-      if !valid then
-        (myNewBbox(r)._high,valid) = adjustBound(myNewBbox(r).high,oldLow,newLow);
-      if !valid then // try with low
-        halt("invalid reindex for VariBlock: distribution bounding box (high) out of range in dimension ", r);
-    }
-  }
-  var d = {(...myNewBbox)};
-  var newDist = new VariBlock(d, targetLocales, 
-                          dataParTasksPerLocale, dataParIgnoreRunningTasks,
-                          dataParMinGranularity);
-  return newDist;
-}
 */
 
-proc LocVariBlock.LocVariBlock(param rank: int,
-                      type idxType, 
-                      locid, // the locale index from the target domain
-                      boundingBox: rank*range(idxType),
-                      targetLocBox: rank*range) {
-  if rank == 1 {
-    const lo = boundingBox(1).low;
-    const hi = boundingBox(1).high;
-    const numelems = hi - lo + 1;
-    const numlocs = targetLocBox(1).length;
-    const (blo, bhi) = _computeBlock(numelems, numlocs, locid,
-                                     max(idxType), min(idxType), lo);
-    myChunk = {blo..bhi};
-  } else {
-    var inds: rank*range(idxType);
-    for param i in 1..rank {
-      const lo = boundingBox(i).low;
-      const hi = boundingBox(i).high;
-      const numelems = hi - lo + 1;
-      const numlocs = targetLocBox(i).length;
-      const (blo, bhi) = _computeBlock(numelems, numlocs, locid(i),
-                                       max(idxType), min(idxType), lo);
-      inds(i) = blo..bhi;
-    }
-    myChunk = {(...inds)};
-  }
-}
 
+proc LocVariBlock.LocVariBlock(myChunk: domain, param rank = myChunk.rank, type idxType = myChunk.idxType) {
+    this.myChunk = myChunk;
+}
+    
 proc VariBlockDom.dsiMyDist() return dist;
 
 proc VariBlockDom.dsiDisplayRepresentation() {
@@ -602,39 +509,7 @@ proc _matchArgsShape(type rangeType, type scalarType, args) type {
   return helper(1);
 }
 
-/*
-proc VariBlock.dsiCreateRankChangeDist(param newRank: int, args) {
-  var collapsedDimLocs: rank*idxType;
 
-  for param i in 1..rank {
-    if isCollapsedDimension(args(i)) {
-      collapsedDimLocs(i) = args(i);
-    } else {
-      collapsedDimLocs(i) = 0;
-    }
-  }
-  const collapsedLocInd = targetLocsIdx(collapsedDimLocs);
-  var collapsedBbox: _matchArgsShape(range(idxType=idxType), idxType, args);
-  var collapsedLocs: _matchArgsShape(range(idxType=int), int, args);
-
-  for param i in 1..rank {
-    if isCollapsedDimension(args(i)) {
-      // set indicies that are out of bounds to the bounding box low or high.
-      collapsedBbox(i) = if args(i) < boundingBox.dim(i).low then boundingBox.dim(i).low else if args(i) > boundingBox.dim(i).high then boundingBox.dim(i).high else args(i);
-      collapsedLocs(i) = collapsedLocInd(i);
-    } else {
-      collapsedBbox(i) = boundingBox.dim(i);
-      collapsedLocs(i) = targetLocDom.dim(i);
-    }
-  }
-
-  const newBbox = boundingBox[(...collapsedBbox)];
-  const newTargetLocales = targetLocales((...collapsedLocs));
-  return new VariBlock(newBbox, newTargetLocales,
-                   dataParTasksPerLocale, dataParIgnoreRunningTasks,
-                   dataParMinGranularity);
-}
-*/
 iter VariBlockDom.these() {
   for i in whole do
     yield i;
@@ -691,7 +566,7 @@ iter VariBlockDom.these(param tag: iterKind, param timed)
       yield followThis;
   }
 }
-  use Time;
+
 iter VariBlockDom.these(param tag: iterKind, param timed)
     where tag == iterKind.leader && timed == true
 {
@@ -700,18 +575,7 @@ iter VariBlockDom.these(param tag: iterKind, param timed)
   const ignoreRunning = dist.dataParIgnoreRunningTasks;
   const minSize = dist.dataParMinGranularity;
   const wholeLow = whole.low;
-
-  // If this is the only task running on this locale, we don't want to
-  // count it when we try to determine how many tasks to use.  Here we
-  // check if we are the only one running, and if so, use
-  // ignoreRunning=true for this locale only.  Obviously there's a bit
-  // of a race condition if some other task starts after we check, but
-  // in that case there is no correct answer anyways.
-  //
-  // Note that this code assumes that any locale will only be in the
-  // targetLocales array once.  If this is not the case, then the
-  // tasks on this locale will *all* ignoreRunning, which may have
-  // performance implications.
+  
   const hereId = here.id;
   const hereIgnoreRunning = if here.runningTasks() == 1 then true
                             else ignoreRunning;
@@ -1156,101 +1020,6 @@ proc VariBlockArr.dsiLocalSlice(ranges) {
 
 
 
-/*
-proc VariBlockArr.dsiRankChange(d, param newRank: int, param stridable: bool, args) {
-  var alias = new VariBlockArr(eltType=eltType, rank=newRank, idxType=idxType, stridable=stridable, dom=d, timer=d.makeArrayTimer());
-  var thisid = this.locale.id;
-  coforall ind in d.dist.targetLocDom {
-    on d.dist.targetLocales(ind) {
-      const locDom = d.getLocDom(ind);
-      // locSlice is a tuple of ranges and scalars. It will match the basic
-      // shape of the args argument. 
-      var locSlice: _matchArgsShape(range(idxType=idxType, stridable=stridable), idxType, args);
-      // collapsedDims stores the value any collapsed dimension is down to.
-      // For any non-collapsed dimension, that position is ignored.
-      // This tuple is then passed to the targetLocsIdx function to build up a
-      // partial index into this.targetLocDom with correct values set for all
-      // collapsed dimensions. The rest of the dimensions get their values from
-      // ind - an index into the new rank changed targetLocDom.
-      var collapsedDims: rank*idxType;
-      var locArrInd: rank*int;
-
-      var j = 1;
-      for param i in 1..args.size {
-        if isCollapsedDimension(args(i)) {
-          locSlice(i) = args(i);
-          collapsedDims(i) = args(i);
-        } else {
-          locSlice(i) = locDom.myVariBlock.dim(j)(args(i));
-          j += 1;
-        }
-      }
-      locArrInd = dom.dist.targetLocsIdx(collapsedDims);
-      j = 1;
-      // Now that the locArrInd values are known for the collapsed dimensions
-      // Pull the rest of the dimensions values from ind
-      for param i in 1..args.size {
-        if !isCollapsedDimension(args(i)) {
-          if newRank > 1 then
-            locArrInd(i) = ind(j);
-          else
-            locArrInd(i) = ind;
-          j += 1;
-        }
-      }
-
-      alias.locArr[ind] =
-        new LocVariBlockArr(eltType=eltType, rank=newRank, idxType=d.idxType,
-                        stridable=d.stridable, locDom=locDom,
-                        myElems=>locArr[(...locArrInd)].myElems[(...locSlice)]);
-
-      if thisid == here.id then
-        alias.myLocArr = alias.locArr[ind];
-    }
-  }
-  if doRADOpt then alias.setupRADOpt();
-  return alias;
-}
-*/
-/*
-proc VariBlockArr.dsiReindex(d: VariBlockDom) {
-  var alias = new VariBlockArr(eltType=eltType, rank=d.rank, idxType=d.idxType,
-                           stridable=d.stridable, dom=d, timer=makeArrayTimer());
-  const sameDom = d==dom;
-
-  var thisid = this.locale.id;
-  coforall i in d.dist.targetLocDom {
-    on d.dist.targetLocales(i) {
-      const locDom = d.getLocDom(i);
-      var locAlias: [locDom.myVariBlock] => locArr[i].myElems;
-      alias.locArr[i] = new LocVariBlockArr(eltType=eltType,
-                                        rank=rank, idxType=d.idxType,
-                                        stridable=d.stridable,
-                                        locDom=locDom,
-                                        myElems=>locAlias);
-      if thisid == here.id then
-        alias.myLocArr = alias.locArr[i];
-      if doRADOpt {
-        if sameDom {
-          // If we the reindex domain is the same as that of this array,
-          //  the RAD cache will be the same you can just copy the values
-          //  directly into the alias's RAD cache
-          if locArr[i].locRAD {
-            alias.locArr[i].locRAD = new LocRADCache(eltType, rank, idxType,
-                                                     dom.dist.targetLocDom);
-            alias.locArr[i].locRAD.RAD = locArr[i].locRAD.RAD;
-          }
-        }
-      }
-    }
-  }
-
-  if doRADOpt then
-    if !sameDom then alias.setupRADOpt();
-
-  return alias;
-}
-*/
 proc VariBlockArr.dsiReallocate(d: domain) {
   //
   // For the default rectangular array, this function changes the data
@@ -1295,7 +1064,7 @@ proc VariBlock.VariBlock(other: VariBlock, privateData,
   dataParIgnoreRunningTasks = privateData(4);
   dataParMinGranularity = privateData(5);
   timer = privateData(6);
-  
+  indexer = policy.makeIndexer();
   for i in targetLocDom {
     targetLocales(i) = other.targetLocales(i);
     locDist(i) = other.locDist(i);

@@ -1,11 +1,12 @@
 use VariBlockDist;
+use VariBlockPolicies;
 
 const Space = {1..16, 1..12};
 
 const T = new NthDomTimer(N=3);
 
-const D1: domain(2) dmapped VariBlock(boundingBox=Space, timer=nil) = Space;
-const D2: domain(2) dmapped VariBlock(boundingBox=Space, timer=T) = Space;
+const D1: domain(2) dmapped VariBlock(boundingBox=Space, timer=nil, policy=new EvenPolicy(dom=Space)) = Space;
+const D2: domain(2) dmapped VariBlock(boundingBox=Space, timer=T, policy=new EvenPolicy(dom=Space)) = Space;
 
 var A1: [D1] int;
 var A2: [D2] int;

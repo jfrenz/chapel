@@ -1,9 +1,11 @@
 use BlockDist;
 use VariBlockDist;
+use VariBlockPolicies;
 
 const Space = {1..16, 1..12};
 
-const D1: domain(2) dmapped VariBlock(Space) = Space;
+const D1: domain(2) dmapped VariBlock(boundingBox=Space, timer=nil, policy=new EvenPolicy(dom=Space)) = Space;
+//const D1: domain(2) dmapped VariBlock(boundingBox=Space, policy=new EvenPolicy(dom=Space)) = Space;
 const D2: domain(2) dmapped Block(Space) = Space;
 
 var A1: [D1] int;
