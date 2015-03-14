@@ -19,6 +19,150 @@
 
 // Since the policy VariBlock excepts is a generic, there is no base class.
 
+class SingleDirectionCutPolicy {
+    param rank;
+    type idxType;
+    
+    type targetLocsDomType = domain(rank);
+    
+    type indexerType = SingleDirectionCutPolicyIndexer(rank, idxType);
+    
+    const dom: domain(rank, idxType);
+    
+    const targetLocsOriginalDomain: domain(1);
+    const targetLocsOriginal: [targetLocsOriginalDomain] locale;
+    
+    var targetLocsDom: targetLocsDomType;
+    var cutdir: int;
+    
+    proc SingleDirectionCutPolicy(dom: domain, cutdir:int = -1, targetLocales: [] locale = Locales, param rank = dom.rank, type idxType = dom.idxType) {
+        if rank != dom.rank then {
+            compilerError("Ranks don't match");
+        }
+        
+        if idxType != dom.idxType then {
+            compilerError("IdxTypes don't match");
+        }
+        
+        
+        if targetLocales.size < 1 then {
+            halt("At least one locale needed to distribute...");
+        }
+        
+        if targetLocales.size > dom.size then {
+            halt("Domain to be distributed needs to have at least as many indices as there are locales across which to distribute.");
+        }
+        
+        if cutdir == -1 then {
+            if rank == 1 then {
+                cutdir = 1;
+            } else {
+                var maxid = 1;
+                
+                for i in 2..rank do {
+                    if dom.dim(i).size > dom.dim(maxid).size then {
+                        maxid = i;
+                    }
+                }
+                this.cutdir = maxid;
+            }
+            
+        } else if cutdir >= 1 && cutdir <= rank then {
+            this.cutdir = cutdir;
+        } else {
+            halt("Invalid cutdir value");
+        }
+        
+        
+        this.dom = dom;
+        
+        this.targetLocsOriginalDomain = {0..#targetLocales.size};
+        this.targetLocsOriginal = reshape(targetLocales, targetLocsOriginalDomain);
+    }
+    
+    proc setupArrays(ref targetLocDom: targetLocsDomType, targetLocArr: [targetLocDom] locale) {
+        
+        var ranges: rank*range;
+        
+        for param i in 1..rank do
+                ranges(i) = 0..#1;
+        
+        ranges(cutdir) = 0..#targetLocsOriginal.size;
+        targetLocDom = {(...ranges)};
+        targetLocArr = reshape(targetLocsOriginal, targetLocDom);
+        targetLocsDom = targetLocDom;
+    }
+    
+    proc computeChunk(locid) {
+        const boundingBox = dom.dims();
+        const targetLocBox = targetLocsDom.dims();
+        
+        const lo = boundingBox(cutdir).low;
+        const hi = boundingBox(cutdir).high;
+        const numelems = hi - lo + 1;
+        const numlocs = targetLocBox(cutdir).length;
+        
+        
+        if rank == 1 {
+            const (blo, bhi) = _computeBlock(numelems, numlocs, locid, max(idxType), min(idxType), lo);
+            return {blo..bhi};
+        } else {
+            var inds: rank*range(idxType);
+            for param i in 1..rank {
+                if i == cutdir then {
+                    const (blo, bhi) = _computeBlock(numelems, numlocs, locid(i), max(idxType), min(idxType), lo);
+                    inds(i) = blo..bhi;
+                } else {
+                    inds(i) = min(idxType)..max(idxType);
+                }
+            }
+            return {(...inds)};
+        }
+    }
+    
+    proc makeIndexer() {
+        return new SingleDirectionCutPolicyIndexer(dom, targetLocsDom, cutdir);
+    }
+    
+}
+
+class SingleDirectionCutPolicyIndexer {
+    param rank;
+    type idxType;
+    
+    const dom: domain(rank);
+    const targetLocDom: domain(rank);
+    const cutdir: int;
+    
+    proc SingleDirectionCutPolicyIndexer(dom: domain, targetLocDom: domain, cutdir:int, param rank = dom.rank, type idxType = dom.idxType) {
+        if dom.rank != rank then {
+            compilerError("Rank and rank of domain don't match");
+        }
+        
+        if idxType != dom.idxType then {
+            compilerError("IdxTypes don't match");
+        }
+        
+        this.cutdir = cutdir;
+        this.dom = dom;
+        this.targetLocDom = targetLocDom;
+    }
+    
+    proc targetLocIdx(ind: rank*idxType) {
+        var result: rank*int;
+        for param i in 1..rank do {
+            result(i) = 0;
+        }
+        
+        const i = cutdir;
+        result(i) = max(0, min((targetLocDom.dim(i).length-1):int,
+                                (((ind(i) - dom.dim(i).low) *
+                                    targetLocDom.dim(i).length:idxType) /
+                                    dom.dim(i).length):int));
+            
+        return if rank == 1 then result(1) else result;
+    }
+}
 
 class EvenPolicy {
     

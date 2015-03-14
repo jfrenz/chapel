@@ -135,7 +135,7 @@ class VariBlock : BaseDist {
   param rank: int;
   type idxType = int;
   var boundingBox: domain(rank, idxType);
-  var targetLocDom: domain(rank);
+  var targetLocDom: policy.targetLocsDomType;
   var targetLocales: [targetLocDom] locale;
   var locDist: [targetLocDom] LocVariBlock(rank, idxType);
   var dataParTasksPerLocale: int;
