@@ -46,48 +46,52 @@ proc BinarySearch(Data:[?Dom], val, in lo = Dom.low, in hi = Dom.high) {
 }
 
 
-
+/*
 class _DefaultFindComparatorClass {
   proc _DefaultFindComparator() { }
   proc this(a, b) { return a == b; }
 }
 
 const _DefaultFindComparator = new _DefaultFindComparatorClass();
+*/
+// TODO: What should these functions return as second value of the tuple
+// in case nothing was found?
 
-// TODO: What should these functions return as second value of tuple in case nothing was found?
 proc FindFirst(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1)) 
     where Dom.rank == 1
 {
   const checkedSearchRange = Dom.dim(1)[searchRange];
-  return _Find(Data, val, checkedSearchRange, _DefaultFindComparator);
+  return _Find(Data, val, checkedSearchRange, 0, false);
 }
 
 proc FindFirst(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1), comparator) 
     where Dom.rank == 1
 {
   const checkedSearchRange = Dom.dim(1)[searchRange];
-  return _Find(Data, val, checkedSearchRange, comparator);
+  return _Find(Data, val, checkedSearchRange, comparator, true);
 }
 
 proc FindLast(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1)) 
     where Dom.rank == 1
 {
   const checkedSearchRange = (Dom.dim(1)[searchRange]) by -1;
-  return _Find(Data, val, checkedSearchRange, _DefaultFindComparator);
+  return _Find(Data, val, checkedSearchRange, 0, false);
 }
 
 proc FindLast(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1), comparator) 
     where Dom.rank == 1
 {
   const checkedSearchRange = (Dom.dim(1)[searchRange]) by -1;
-  return _Find(Data, val, checkedSearchRange, comparator);
+  return _Find(Data, val, checkedSearchRange, comparator, true);
 }
 
-proc _Find(const ref Data: [?Dom], const val, const checkedSearchRange, comparator)
+proc _Find(const ref Data: [?Dom], const val, const checkedSearchRange, comparator, param useComparator: bool)
     where Dom.rank == 1
 {
   for i in checkedSearchRange {
-    if comparator(Data(i), val) then {
+    if useComparator && comparator(Data(i), val) then {
+      return (true, i);
+    } else if !useComparator && Data(i) == val  {
       return (true, i);
     }
   }
