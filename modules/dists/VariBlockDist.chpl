@@ -135,7 +135,7 @@ class VariBlock : BaseDist {
   param rank: int;
   type idxType = int;
   var boundingBox: domain(rank, idxType);
-  var targetLocDom: policy.targetLocsDomType;
+  var targetLocDom: policy.tlocsDomType;
   var targetLocales: [targetLocDom] locale;
   var locDist: [targetLocDom] LocVariBlock(rank, idxType);
   var dataParTasksPerLocale: int;
@@ -279,15 +279,13 @@ proc VariBlock.VariBlock(boundingBox: domain,
   }
   
   if policy == nil then {
-    halt("Policy must no be nil");
+    halt("Policy must not be nil");
   }
   
   this.timer = if enableVariBlockTimings && timer != nil then
                  timer.getNewDmapTimer()
                else
                  nil;
-  
-  
   this.boundingBox = boundingBox;
   
   policy.setupArrays(this.targetLocDom, this.targetLocales);
@@ -655,6 +653,7 @@ proc VariBlockDom.dsiSerialWrite(x:Writer) {
 // how to allocate a new array over this domain
 //
 proc VariBlockDom.dsiBuildArray(type eltType) {      
+    
   var arr = new VariBlockArr(policyType=policyType, eltType=eltType, rank=rank, idxType=idxType, stridable=stridable, dom=this);
   arr.setup();
   return arr;
