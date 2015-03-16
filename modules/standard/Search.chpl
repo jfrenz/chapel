@@ -44,3 +44,54 @@ proc BinarySearch(Data:[?Dom], val, in lo = Dom.low, in hi = Dom.high) {
   }
   return (false, lo);
 }
+
+
+
+class _DefaultFindComparatorClass {
+  proc _DefaultFindComparator() { }
+  proc this(a, b) { return a == b; }
+}
+
+const _DefaultFindComparator = new _DefaultFindComparatorClass();
+
+// TODO: What should these functions return as second value of tuple in case nothing was found?
+proc FindFirst(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1)) 
+    where Dom.rank == 1
+{
+  const checkedSearchRange = Dom.dim(1)[searchRange];
+  return _Find(Data, val, checkedSearchRange, _DefaultFindComparator);
+}
+
+proc FindFirst(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1), comparator) 
+    where Dom.rank == 1
+{
+  const checkedSearchRange = Dom.dim(1)[searchRange];
+  return _Find(Data, val, checkedSearchRange, comparator);
+}
+
+proc FindLast(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1)) 
+    where Dom.rank == 1
+{
+  const checkedSearchRange = (Dom.dim(1)[searchRange]) by -1;
+  return _Find(Data, val, checkedSearchRange, _DefaultFindComparator);
+}
+
+proc FindLast(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1), comparator) 
+    where Dom.rank == 1
+{
+  const checkedSearchRange = (Dom.dim(1)[searchRange]) by -1;
+  return _Find(Data, val, checkedSearchRange, comparator);
+}
+
+proc _Find(const ref Data: [?Dom], const val, const checkedSearchRange, comparator)
+    where Dom.rank == 1
+{
+  for i in checkedSearchRange {
+    if comparator(Data(i), val) then {
+      return (true, i);
+    }
+  }
+  return (false, 0:(Data.idxType));
+}
+
+

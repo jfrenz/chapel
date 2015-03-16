@@ -1,0 +1,19 @@
+Test data:
+7 0 0 2 2 7 3 3 2 7 0 8 1 5 2 6 3 2 8 3 4 0 2 9 5 3 3 2 3 9 8 5
+
+(true, 7)
+(true, 28)
+(true, 6)
+(true, 18)
+false
+false
+false
+false
+(true, 4)
+(true, 31)
+(true, 6)
+(true, 21)
+false
+false
+false
+false
