@@ -204,12 +204,16 @@ class EvenPolicy {
     
     type indexerType = EvenPolicyIndexer(rank, idxType);
     
-    const dom: domain(rank);
-    
-    const targetLocsOriginalDomain: domain(1);
-    const targetLocsOriginal: [targetLocsOriginalDomain] locale;
-    
+    const dom: domain(rank, idxType);
+      
     var targetLocsDom: tlocsDomType;
+    
+    
+    
+    // Following will be returned to the VariBlock by setup method
+    var tlocsDom: domain(rank);
+    var tlocsLocales: [tlocsDom] locale;
+    var tlocsPortions: [tlocsDom] rank*range(idxType);
     
     proc EvenPolicy(dom: domain, targetLocales: [] locale = Locales, param rank = dom.rank, type idxType = dom.idxType) {
         if rank != dom.rank then {
@@ -232,61 +236,99 @@ class EvenPolicy {
         
         this.dom = dom;
         
-        this.targetLocsOriginalDomain = {0..#targetLocales.size};
-        this.targetLocsOriginal = reshape(targetLocales, targetLocsOriginalDomain);
-    }
-    
-    proc setupArrays(ref targetLocDom: tlocsDomType, targetLocArr: [targetLocDom] locale) {
-        if rank != 1 && targetLocsOriginal.rank == 1 {
-            const factors = _factor(rank, targetLocsOriginal.numElements);
+       // this.targetLocsOriginalDomain = {0..#targetLocales.size};
+       // this.targetLocsOriginal = reshape(targetLocales, targetLocsOriginalDomain);
+        
+        
+        if rank != 1 && targetLocales.rank == 1 {
+            const factors = _factor(rank, targetLocales.numElements);
             var ranges: rank*range;
-            for param i in 1..rank do
-            ranges(i) = 0..#factors(i);
-            targetLocDom = {(...ranges)};
-            targetLocArr = reshape(targetLocsOriginal, targetLocDom);
-            targetLocsDom = targetLocDom;
-        } else {
-            if targetLocsOriginal.rank != rank then
-                compilerError("specified target array of locales must equal 1 or distribution rank");
-            var ranges: rank*range;
-            for param i in 1..rank do
-            ranges(i) = 0..#targetLocsOriginal.domain.dim(i).length;
-            targetLocDom = {(...ranges)};
-            targetLocArr = targetLocsOriginal;
-            targetLocsDom = targetLocDom;
-        }
-    }
-    
-    proc computeChunk(locid) {
-        const boundingBox = dom.dims();
-        const targetLocBox = targetLocsDom.dims();
-        if rank == 1 {
-            const lo = boundingBox(1).low;
-            const hi = boundingBox(1).high;
-            const numelems = hi - lo + 1;
-            const numlocs = targetLocBox(1).length;
-            const (blo, bhi) = _computeBlock(numelems, numlocs, locid,
-                                            max(idxType), min(idxType), lo);
-            return {blo..bhi};
-        } else {
-            var inds: rank*range(idxType);
-            for param i in 1..rank {
-            const lo = boundingBox(i).low;
-            const hi = boundingBox(i).high;
-            const numelems = hi - lo + 1;
-            const numlocs = targetLocBox(i).length;
-            const (blo, bhi) = _computeBlock(numelems, numlocs, locid(i),
-                                            max(idxType), min(idxType), lo);
-            inds(i) = blo..bhi;
+            for param i in 1..rank do {
+                ranges(i) = 0..#factors(i);
             }
-            return {(...inds)};
+            
+            tlocsDom = {(...ranges)};
+            tlocsLocales = reshape(targetLocales, tlocsDom);
+        } else {
+            if targetLocales.rank != rank then {
+                compilerError("specified target array of locales must equal 1 or distribution rank");
+            }
+            
+            var ranges: rank*range;
+            for param i in 1..rank do {
+                ranges(i) = 0..targetLocales.domain.dim(i).length;
+            }
+            
+            tlocsDom = {(...ranges)};
+            tlocsLocales = targetLocales;
         }
+        
+        
+        
+        
+        
+        
+        
+        proc _computeChunk(locid): rank*range(idxType) {
+            const boundingBox = dom.dims();
+            const targetLocBox = tlocsDom.dims();
+            if rank == 1 {
+                var inds: rank*range(idxType);
+                const lo = boundingBox(1).low;
+                const hi = boundingBox(1).high;
+                const numelems = hi - lo + 1;
+                const numlocs = targetLocBox(1).length;
+                inds(1) = _computeBlock(numelems, numlocs, locid, max(idxType), min(idxType), lo);
+                return inds;
+            } else {
+                var inds: rank*range(idxType);
+                for param i in 1..rank {
+                    const lo = boundingBox(i).low;
+                    const hi = boundingBox(i).high;
+                    const numelems = hi - lo + 1;
+                    const numlocs = targetLocBox(i).length;
+                    const (blo, bhi) = _computeBlock(numelems, numlocs, locid(i), max(idxType), min(idxType), lo);
+                    inds(i) = blo..bhi;
+                }
+                return inds;
+            }
+        }
+        
+        
+        forall i in tlocsDom do {
+            tlocsPortions(i) = _computeChunk(i);
+        } 
+    }
+    
+
+    
+    proc setup( /* possible callbacks */ ) {
+        return(tlocsDom, tlocsLocales, tlocsPortions);
     }
     
     proc makeIndexer() {
-        return new EvenPolicyIndexer(dom, targetLocsDom);
+        return new EvenPolicyIndexer(dom, tlocsDom);
+        //return nil;
     }
     
+    proc makeDomainTimer() {
+        return nil;
+    }
+    
+    proc dump() {
+        writeln();
+        writeln("EvenPolicy dump:");
+        writeln();
+        writeln("tlocsDom");
+        writeln(tlocsDom);
+        writeln();
+        writeln("tlocsLocales");
+        writeln(tlocsLocales);
+        writeln();
+        writeln("tlocsPortions");
+        writeln(tlocsPortions);
+        writeln();
+    }
 }
 
 class EvenPolicyIndexer {
