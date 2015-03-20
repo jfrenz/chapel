@@ -33,7 +33,8 @@ class SingleDirectionCutPolicy2 {
     type indexerType = SingleDirectionCutPolicy2Indexer(rank, idxType);
     //type timerType = 
     
-    
+    // Currently must be zero-based to work. VariBlock should be modified so that this isn't the case
+    param indexingBase = 0;
     
     const dom: domain(rank, idxType);
     
@@ -50,7 +51,7 @@ class SingleDirectionCutPolicy2 {
     // Following will be returned to the VariBlock by setup method
     var tlocsDom: domain(rank);
     var tlocsLocales: [tlocsDom] locale;
-    var tlocsPortions: [tlocsDom] domain(rank, idxType);
+    var tlocsPortions: [tlocsDom] rank*range(idxType);
     
     proc SingleDirectionCutPolicy2(dom: domain, cutDim:int = -1, param rank = dom.rank, type idxType = dom.idxType) {
         var targetLocales: [LocaleSpace] (locale, real);
@@ -85,17 +86,17 @@ class SingleDirectionCutPolicy2 {
         {
             var ranges: rank*range;
             for param i in 1..rank do {
-                ranges(i) = 1..#1;
+                ranges(i) = indexingBase..#1;
             }
-            ranges(1) = 1..#targetLocales.size;
+            ranges(1) = indexingBase..#targetLocales.size;
             tlocsDom = {(...ranges)};
         }
         
         // Set up tlocsLocales and tlocsRelativePortions
-        var tlocsRelativePortions: [1..#targetLocales.size] real;
+        var tlocsRelativePortions: [indexingBase..#targetLocales.size] real;
         
         {
-            var targetLocalesReindex: [1..#targetLocales.size] => targetLocales;
+            var targetLocalesReindex: [indexingBase..#targetLocales.size] => targetLocales;
             forall i in tlocsDom do {
                 tlocsLocales(i) = targetLocalesReindex(i(1))(1);
                 tlocsRelativePortions(i(1)) = targetLocalesReindex(i(1))(2);
@@ -114,7 +115,8 @@ class SingleDirectionCutPolicy2 {
                     ranges(i) = rangeMinMax;
                 }
                 ranges(this.cutDim) = _tlocsRanges(i(1));
-                tlocsPortions(i) = {(...ranges)};
+                tlocsPortions(i) = ranges;
+                //tlocsPortions(i) = {(...ranges)};
             }
         }
         
@@ -192,217 +194,6 @@ class SingleDirectionCutPolicy2Indexer {
 }
 
 
-
-class SingleDirectionCutPolicy {
-    
-    // Following types are (or probably will be) needed by VariBlockDist and thus are always required
-    param rank;
-    type idxType;
-    param tlocsRank = rank;
-    type tlocsIdxType = int;
-    type tlocsDomType = domain(tlocsRank, tlocsIdxType);
-    type indexerType = SingleDirectionCutPolicyIndexer(rank, idxType);
-    
-    
-    
-    
-    const dom: domain(rank, idxType);
-    
-    const targetLocsOriginalDomain: domain(1);
-    const targetLocsOriginal: [targetLocsOriginalDomain] locale;
-    
-    var targetLocsDom: tlocsDomType;
-    var cutDim: int;
-    
-    var cacheDom: domain(1);
-    var cutCache: [cacheDom] int;
-    
-    proc SingleDirectionCutPolicy(dom: domain, cutDim:int = -1, targetLocales: [] locale = Locales, param rank = dom.rank, type idxType = dom.idxType) {
-        if rank != dom.rank then {
-            compilerError("Ranks don't match");
-        }
-        
-        if idxType != dom.idxType then {
-            compilerError("IdxTypes don't match");
-        }
-        
-        
-        if targetLocales.size < 1 then {
-            halt("At least one locale needed to distribute...");
-        }
-        
-        if targetLocales.size > dom.size then {
-            halt("Domain to be distributed needs to have at least as many indices as there are locales across which to distribute.");
-        }
-        
-        if cutDim == -1 then {
-            if rank == 1 then {
-                cutDim = 1;
-            } else {
-                var maxid = 1;
-                
-                for i in 2..rank do {
-                    if dom.dim(i).size > dom.dim(maxid).size then {
-                        maxid = i;
-                    }
-                }
-                this.cutDim = maxid;
-            }
-            
-        } else if cutDim >= 1 && cutDim <= rank then {
-            this.cutDim = cutDim;
-        } else {
-            halt("Invalid cutDim value");
-        }
-        
-        
-        
-        this.dom = dom;
-        
-        this.targetLocsOriginalDomain = {0..#targetLocales.size};
-        this.targetLocsOriginal = reshape(targetLocales, targetLocsOriginalDomain);
-    }
-    /*
-    proc setupArrays() {
-        var ranges: rank*range:
-        
-        for param i in 1..rank do {
-            ranges(i) = 0..#1;
-        }
-        
-        ranges
-    }*/
-    
-    proc setup( /* possible callbacks */ ) {
-        
-        // First compute tlocsDom
-        var ranges: rank*range;
-        for param i in 1..rank do {
-            ranges(i) = 0..#1;
-        }
-        ranges(cutDim) = 0..#targetLocsOriginal.size;
-        const tlocsDom = {(...ranges)};
-        
-        
-        //return (tlocsDom, tlocsLocales, tlocsPortions, timer, indexer);
-    }
-    
-    proc setupArrays(ref targetLocDom: tlocsDomType, targetLocArr: [targetLocDom] locale) {
-        
-        var ranges: rank*range;
-        
-        for param i in 1..rank do
-                ranges(i) = 0..#1;
-        
-        ranges(cutDim) = 0..#targetLocsOriginal.size;
-        targetLocDom = {(...ranges)};
-        
-        targetLocArr = reshape(targetLocsOriginal, targetLocDom);
-        targetLocsDom = targetLocDom;
-        
-        
-        
-        
-        cacheDom = {dom.dim(this.cutDim)};
-        const r = cacheDom.size / targetLocsOriginalDomain.size + 1;
-        const cm = cacheDom.low;
-        for i in cacheDom do {
-            cutCache(i) = (i-cm)/r;
-        }
-        
-        const ip: [{1..#(targetLocsOriginalDomain.size)}] real = 1.0;
-        
-        computePartitioning(dom.dim(cutDim), ip);
-        
-        writeln("**************************************");
-        writeln(cutCache);
-        writeln("--------------------------------------");
-    }
-    
-    proc computeChunk(locid) {
-        
-        const icut = if rank == 1 then locid else locid(cutDim);
-        const lo = dom.dim(cutDim).low;
-        const hi = dom.dim(cutDim).high;
-        
-       // const rlo = find_first(cutCache, icut);
-       // const rhi = find_last(cutCache, icut);
-        const rlo = FindFirst(cutCache, icut);
-        const rhi = FindLast(cutCache, icut);
-        assert(rlo(1) && rhi(1));
-        
-        const blo = if rlo(2) == lo then min(idxType) else rlo(2);
-        const bhi = if rhi(2) == hi then max(idxType) else rhi(2);
-        
-        if rank == 1 {
-            return {blo..bhi};
-        } else {
-            var inds: rank*range(idxType);
-            for param i in 1..rank {
-                if i == cutDim then {
-                    inds(i) = blo..bhi;
-                } else {
-                    inds(i) = min(idxType)..max(idxType);
-                }
-            }
-            return {(...inds)};
-        }
-    }
-    
-    proc makeIndexer() {
-        return new SingleDirectionCutPolicyIndexer(dom, targetLocsDom, cutDim, cacheDom, cutCache);
-    }
-    
-}
-
-class SingleDirectionCutPolicyIndexer {
-    param rank;
-    type idxType;
-    
-    const dom: domain(rank);
-    const targetLocDom: domain(rank);
-    const cutDim: int;
-    var cacheDom: domain(1);
-    var cutCache: [cacheDom] int;
-    
-    proc SingleDirectionCutPolicyIndexer(dom: domain, targetLocDom: domain, cutDim:int, cacheDom, cutCache, param rank = dom.rank, type idxType = dom.idxType) {
-        if dom.rank != rank then {
-            compilerError("Rank and rank of domain don't match");
-        }
-        
-        if idxType != dom.idxType then {
-            compilerError("IdxTypes don't match");
-        }
-        
-        this.cutDim = cutDim;
-        this.dom = dom;
-        this.targetLocDom = targetLocDom;
-        
-        this.cacheDom = cacheDom;
-        this.cutCache = cutCache;
-    }
-    
-    proc targetLocIdx(ind: rank*idxType) {
-        var result: rank*int;
-        for param i in 1..rank do {
-            result(i) = 0;
-        }
-        
-        const p = ind(cutDim);
-        const cmin = cacheDom.low;
-        const cmax = cacheDom.high;
-        
-        if p <= cmin then {
-            result(cutDim) = cutCache(cmin);
-        } else if p >= cmax then {
-            result(cutDim) = cutCache(cmax);
-        } else {
-            result(cutDim) = cutCache(p);
-        }
-        
-        return if rank == 1 then result(1) else result;
-    }
-}
 
 class EvenPolicy {
     

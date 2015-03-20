@@ -135,7 +135,8 @@ class VariBlock : BaseDist {
   param rank: int;
   type idxType = int;
   var boundingBox: domain(rank, idxType);
-  var targetLocDom: policy.tlocsDomType;
+  //var targetLocDom: policy.tlocsDomType;
+  var targetLocDom: domain(rank);
   var targetLocales: [targetLocDom] locale;
   var locDist: [targetLocDom] LocVariBlock(rank, idxType);
   var dataParTasksPerLocale: int;
@@ -262,7 +263,6 @@ class LocVariBlockArr {
 proc VariBlock.VariBlock(boundingBox: domain,
                 
                 policy,
-                timer: VariBlockTimers.VB_TimerBase_Dmap = nil,
                 
                 dataParTasksPerLocale=getDataParTasksPerLocale(),
                 dataParIgnoreRunningTasks=getDataParIgnoreRunningTasks(),
@@ -282,21 +282,30 @@ proc VariBlock.VariBlock(boundingBox: domain,
     halt("Policy must not be nil");
   }
   
-  this.timer = if enableVariBlockTimings && timer != nil then
+  /*this.timer = if enableVariBlockTimings && timer != nil then
                  timer.getNewDmapTimer()
                else
-                 nil;
+                 nil;*/
+  
+  const setupData = policy.setup();
+  this.targetLocDom = setupData(1);
+  this.targetLocales = setupData(2);
+  const chunks = setupData(3);
+  
+  
   this.boundingBox = boundingBox;
+  this.timer = nil;
+  //policy.setupArrays(this.targetLocDom, this.targetLocales);
   
-  policy.setupArrays(this.targetLocDom, this.targetLocales);
   
+
   indexer = policy.makeIndexer();
   
   const boundingBoxDims = boundingBox.dims();
   const targetLocDomDims = targetLocDom.dims();
   coforall locid in targetLocDom do
     on this.targetLocales(locid) do
-      locDist(locid) =  new LocVariBlock(policy.computeChunk(locid));
+      locDist(locid) =  new LocVariBlock({(...chunks(locid))});
 
   // NOTE: When these knobs stop using the global defaults, we will need
   // to add checks to make sure dataParTasksPerLocale<0 and
@@ -343,7 +352,7 @@ proc VariBlock.dsiAssign(other: this.type) {
 }
 
 proc VariBlock.dsiClone() {
-  return new VariBlock(boundingBox, policy, timer,
+  return new VariBlock(boundingBox, policy,
                    dataParTasksPerLocale, dataParIgnoreRunningTasks,
                    dataParMinGranularity);
 }
@@ -367,8 +376,8 @@ proc VariBlock.dsiDisplayRepresentation() {
 }
 
 proc VariBlock.makeDomainTimer() {
-    const _tim = if enableVariBlockTimings && timer != nil then
-                 timer.getDomainTimer()
+    const _tim = if enableVariBlockTimings then
+                 policy.makeDomainTimer()
              else
                  nil:VariBlockTimers.VB_TimerBase_Domain;
     return _tim;
