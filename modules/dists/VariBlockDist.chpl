@@ -260,15 +260,13 @@ class LocVariBlockArr {
 //
 // VariBlock constructor for clients of the VariBlock distribution
 //
-proc VariBlock.VariBlock(boundingBox: domain,
-                
-                policy,
+proc VariBlock.VariBlock(policy,
                 
                 dataParTasksPerLocale=getDataParTasksPerLocale(),
                 dataParIgnoreRunningTasks=getDataParIgnoreRunningTasks(),
                 dataParMinGranularity=getDataParMinGranularity(),
-                param rank = boundingBox.rank,
-                type idxType = boundingBox.idxType) {
+                param rank = policy.rank,
+                type idxType = policy.idxType) {
   if rank != boundingBox.rank then
     compilerError("specified VariBlock rank != rank of specified bounding box");
   if idxType != boundingBox.idxType then
@@ -293,7 +291,7 @@ proc VariBlock.VariBlock(boundingBox: domain,
   const chunks = setupData(3);
   
   
-  this.boundingBox = boundingBox;
+  this.boundingBox = policy.dom;
   this.timer = nil;
   //policy.setupArrays(this.targetLocDom, this.targetLocales);
   
@@ -322,7 +320,10 @@ proc VariBlock.VariBlock(boundingBox: domain,
   }
 }
 
+/*
 proc VariBlock.dsiAssign(other: this.type) {
+  writeln("%%%%% Assign");
+  
   coforall locid in targetLocDom do
     on targetLocales(locid) do
       delete locDist(locid);
@@ -350,11 +351,13 @@ proc VariBlock.dsiAssign(other: this.type) {
     on targetLocales(locid) do
       locDist(locid) = new LocVariBlock(policy.computeChunk(locid));
 }
+*/
 
 proc VariBlock.dsiClone() {
-  return new VariBlock(boundingBox, policy,
+  return this;
+  /*return new VariBlock(boundingBox, policy,
                    dataParTasksPerLocale, dataParIgnoreRunningTasks,
-                   dataParMinGranularity);
+                   dataParMinGranularity);*/
 }
 
 proc VariBlock.dsiDestroyDistClass() {

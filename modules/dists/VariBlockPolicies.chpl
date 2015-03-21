@@ -22,7 +22,7 @@ use Search;
 use VariBlockPolicyHelpers;
 
 
-class SingleDirectionCutPolicy2 {
+class SingleDirectionCutPolicy {
     
     // Following types are (or probably will be) needed by VariBlockDist and thus are always required
     param rank;
@@ -30,11 +30,11 @@ class SingleDirectionCutPolicy2 {
     param tlocsRank = rank;
     type tlocsIdxType = int;
     type tlocsDomType = domain(tlocsRank, tlocsIdxType);
-    type indexerType = SingleDirectionCutPolicy2Indexer(rank, idxType);
+    type indexerType = SingleDirectionCutPolicyIndexer(rank, idxType);
     //type timerType = 
     
     // Currently must be zero-based to work. VariBlock should be modified so that this isn't the case
-    param indexingBase = 0;
+   // param 1 = 1;
     
     const dom: domain(rank, idxType);
     
@@ -53,7 +53,7 @@ class SingleDirectionCutPolicy2 {
     var tlocsLocales: [tlocsDom] locale;
     var tlocsPortions: [tlocsDom] rank*range(idxType);
     
-    proc SingleDirectionCutPolicy2(dom: domain, cutDim:int = -1, param rank = dom.rank, type idxType = dom.idxType) {
+    proc SingleDirectionCutPolicy(dom: domain, cutDim:int = -1, param rank = dom.rank, type idxType = dom.idxType) {
         var targetLocales: [LocaleSpace] (locale, real);
         forall i in LocaleSpace do {
             targetLocales(i) = (Locales(i), 1.0);
@@ -62,7 +62,7 @@ class SingleDirectionCutPolicy2 {
         _initilize(dom, targetLocales, cutDim);
     }
     
-    proc SingleDirectionCutPolicy2(dom: domain, targetLocales: [] (locale, real), cutDim:int = -1, param rank = dom.rank, type idxType = dom.idxType) {
+    proc SingleDirectionCutPolicy(dom: domain, targetLocales: [] (locale, real), cutDim:int = -1, param rank = dom.rank, type idxType = dom.idxType) {
         _initilize(dom, targetLocales, cutDim);
     }
     
@@ -86,17 +86,17 @@ class SingleDirectionCutPolicy2 {
         {
             var ranges: rank*range;
             for param i in 1..rank do {
-                ranges(i) = indexingBase..#1;
+                ranges(i) = 1..#1;
             }
-            ranges(1) = indexingBase..#targetLocales.size;
+            ranges(1) = 1..#targetLocales.size;
             tlocsDom = {(...ranges)};
         }
         
         // Set up tlocsLocales and tlocsRelativePortions
-        var tlocsRelativePortions: [indexingBase..#targetLocales.size] real;
+        var tlocsRelativePortions: [1..#targetLocales.size] real;
         
         {
-            var targetLocalesReindex: [indexingBase..#targetLocales.size] => targetLocales;
+            var targetLocalesReindex: [1..#targetLocales.size] => targetLocales;
             forall i in tlocsDom do {
                 tlocsLocales(i) = targetLocalesReindex(i(1))(1);
                 tlocsRelativePortions(i(1)) = targetLocalesReindex(i(1))(2);
@@ -130,7 +130,7 @@ class SingleDirectionCutPolicy2 {
     }
     
     proc makeIndexer() {
-        return new SingleDirectionCutPolicy2Indexer(this.cutDim, cutCache, rank, idxType);
+        return new SingleDirectionCutPolicyIndexer(this.cutDim, cutCache, rank, idxType);
     }
     
     proc makeDomainTimer() {
@@ -139,7 +139,7 @@ class SingleDirectionCutPolicy2 {
     
     proc dump() {
         writeln();
-        writeln("SingleDirectionCutPolicy2 dump:");
+        writeln("SingleDirectionCutPolicy dump:");
         writeln();
         writeln("Cut Cache");
         writeln(cutCacheDom);
@@ -157,7 +157,7 @@ class SingleDirectionCutPolicy2 {
     }
 }
 
-class SingleDirectionCutPolicy2Indexer {
+class SingleDirectionCutPolicyIndexer {
     param rank;
     type idxType;
     
@@ -165,7 +165,7 @@ class SingleDirectionCutPolicy2Indexer {
     var cutCacheDom: domain(1, idxType);
     var cutCache: [cutCacheDom] int;
     
-    proc SingleDirectionCutPolicy2Indexer(cutDim:int, cutCache, param rank, type idxType) {
+    proc SingleDirectionCutPolicyIndexer(cutDim:int, cutCache, param rank, type idxType) {
         this.cutDim = cutDim;
         this.cutCacheDom = cutCache.domain;
         this.cutCache = cutCache;
@@ -174,7 +174,7 @@ class SingleDirectionCutPolicy2Indexer {
     proc targetLocIdx(ind: rank*idxType) {
         var result: rank*int;
         for param i in 1..rank do {
-            result(i) = 0;
+            result(i) = 1;
         }
         
         const p = ind(cutDim);
@@ -199,15 +199,14 @@ class EvenPolicy {
     
     param rank;
     type idxType;
-    
-    type tlocsDomType = domain(rank, idxType);
-    
+    param tlocsRank = rank;
+    type tlocsIdxType = int;
+    type tlocsDomType = domain(tlocsRank, tlocsIdxType);
     type indexerType = EvenPolicyIndexer(rank, idxType);
     
-    const dom: domain(rank, idxType);
-      
-    var targetLocsDom: tlocsDomType;
     
+    
+    const dom: domain(rank, idxType);
     
     
     // Following will be returned to the VariBlock by setup method
@@ -256,7 +255,7 @@ class EvenPolicy {
             
             var ranges: rank*range;
             for param i in 1..rank do {
-                ranges(i) = 0..targetLocales.domain.dim(i).length;
+                ranges(i) = 0..#targetLocales.domain.dim(i).length;
             }
             
             tlocsDom = {(...ranges)};
@@ -278,7 +277,8 @@ class EvenPolicy {
                 const hi = boundingBox(1).high;
                 const numelems = hi - lo + 1;
                 const numlocs = targetLocBox(1).length;
-                inds(1) = _computeBlock(numelems, numlocs, locid, max(idxType), min(idxType), lo);
+                const(chi, clo) = _computeBlock(numelems, numlocs, locid, max(idxType), min(idxType), lo);
+                inds(1) = chi..clo;
                 return inds;
             } else {
                 var inds: rank*range(idxType);
@@ -335,7 +335,7 @@ class EvenPolicyIndexer {
     param rank;
     type idxType;
     
-    const dom: domain(rank);
+    const dom: domain(rank, idxType);
     const targetLocDom: domain(rank);
     
     proc EvenPolicyIndexer(dom: domain, targetLocDom: domain, param rank = dom.rank, type idxType = dom.idxType) {

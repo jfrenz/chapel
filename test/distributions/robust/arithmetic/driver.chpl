@@ -1,6 +1,7 @@
 use BlockDist, CyclicDist, BlockCycDist, ReplicatedDist;
+use VariBlockDist, VariBlockPolicies;
 
-enum DistType { default, block, cyclic, blockcyclic, replicated };
+enum DistType { default, block, cyclic, blockcyclic, replicated, variblock_even };
 
 config param distType: DistType = if CHPL_COMM=="none" then DistType.default
                                                        else DistType.block;
@@ -62,6 +63,22 @@ proc setupDistributions() {
             new dmap(new ReplicatedDist()),
             new dmap(new ReplicatedDist()),
             new dmap(new ReplicatedDist())
+           );
+  }
+  if distType == DistType.variblock_even {
+    /*return (
+            new dmap(new VariBlock(new EvenPolicy(dom=Space1, rank=1))),
+            new dmap(new Block(rank=2, boundingBox=Space2)),
+            new dmap(new Block(rank=3, boundingBox=Space3)),
+            new dmap(new Block(rank=4, boundingBox=Space4)),
+            new dmap(new Block(rank=2, idxType=int(32), boundingBox=Space2D32))
+           );*/
+      return (
+            new dmap(new VariBlock(new EvenPolicy(dom=Space1, rank=1))),
+            new dmap(new VariBlock(new EvenPolicy(dom=Space2, rank=2))),
+            new dmap(new VariBlock(new EvenPolicy(dom=Space3, rank=3))),
+            new dmap(new VariBlock(new EvenPolicy(dom=Space4, rank=4))),
+            new dmap(new VariBlock(new EvenPolicy(dom=Space2D32, rank=2, idxType=int(32))))
            );
   }
   halt("unexpected 'distType': ", distType);
