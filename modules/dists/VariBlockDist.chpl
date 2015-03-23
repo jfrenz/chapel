@@ -77,8 +77,8 @@ config param testFastFollowerOptimization = false;
 //
 // This flag is used to disable lazy initialization of the RAD cache.
 //
-//config param disableVariBlockLazyRAD = defaultDisableLazyRADOpt;
-config param disableVariBlockLazyRAD = true;
+config param disableVariBlockLazyRAD = defaultDisableLazyRADOpt;
+//config param disableVariBlockLazyRAD = true;
 
 // Disabling timing support when not needed improves performance a bit.
 config param enableVariBlockTimings = true;
@@ -495,29 +495,6 @@ proc VariBlockDom.dsiDim(d: int) return whole.dim(d);
 // stopgap to avoid accessing locDoms field (and returning an array)
 proc VariBlockDom.getLocDom(localeIdx) return locDoms(localeIdx);
 
-
-//
-// Given a tuple of scalars of type t or range(t) match the shape but
-// using types rangeType and scalarType e.g. the call:
-// _matchArgsShape(range(int(32)), int(32), (1:int(64), 1:int(64)..5, 1:int(64)..5))
-// returns the type: (int(32), range(int(32)), range(int(32)))
-//
-proc _matchArgsShape(type rangeType, type scalarType, args) type {
-  proc helper(param i: int) type {
-    if i == args.size {
-      if isCollapsedDimension(args(i)) then
-        return (scalarType,);
-      else
-        return (rangeType,);
-    } else {
-      if isCollapsedDimension(args(i)) then
-        return (scalarType, (... helper(i+1)));
-      else
-        return (rangeType, (... helper(i+1)));
-    }
-  }
-  return helper(1);
-}
 
 
 iter VariBlockDom.these() {

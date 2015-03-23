@@ -30,7 +30,6 @@ proc computePartitioning(R, indexPartitions)
     }
     
     if boundsChecking then {
-        writeln("--- "+indexPartitions:string);
         for e in indexPartitions do {
             if e <= 0:real then {
                 halt("Each element in indexPartitions must be greater than zero");

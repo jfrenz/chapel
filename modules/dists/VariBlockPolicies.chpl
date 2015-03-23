@@ -21,6 +21,171 @@
 use Search;
 use VariBlockPolicyHelpers;
 
+record ArrayWrapper {
+    param rank;
+    type idxType;
+    type eltType;
+    var dom: domain(rank, idxType);
+    var data: [dom] eltType;
+}
+
+class StaticCutPolicy {
+    
+    // Following types are (or probably will be) needed by VariBlockDist and thus are always required
+    param rank;
+    type idxType;
+    param tlocsRank = rank;
+    type tlocsIdxType = int;
+    type tlocsDomType = domain(tlocsRank, tlocsIdxType);
+    type indexerType = StaticCutPolicyIndexer(rank, idxType);
+    
+    // Following will be returned to the VariBlock by setup method
+    var tlocsDom: domain(rank);
+    var tlocsLocales: [tlocsDom] locale;
+    var tlocsPortions: [tlocsDom] rank*range(idxType);
+    
+    // Data for indexer
+    var cutCache: rank*ArrayWrapper(1, idxType, int);
+    
+    // Other studd
+    var dom: domain(rank, idxType);
+    
+    /*
+    proc StaticCutPolicy(dom: domain, targetLocs: [?targetLocsDom] locale, param rank = dom.rank, type idxType = dom.idxType, cuts: [] real ) {
+        if k != rank then {
+            compilerError("Wrong number of cut tables supplied");
+        }
+        
+        var cutsWrapped: rank*ArrayWrapper(1, int, real);
+        
+        for i in 1..rank do {
+            if cuts(i).domain.dim(1) != targetLocsDom.dim(i) then {
+                halt("targetLocs and cuts don't match in dimension "+i);
+            }
+            cutsWrapped(i).dom = cuts(i).dom;
+            cutsWrapped(i).data = cuts(i).data;
+        }
+        
+        _initialize(dom, targetLocs, cutsWrapped);
+    }*/
+    
+    proc StaticCutPolicy(dom: domain, targetLocs: [?targetLocsDom] locale, param rank = dom.rank, type idxType = dom.idxType)
+    {
+        _initialize(dom, targetLocs);
+    }
+    
+    proc setCuts(dim: int, cuts: [?cutsDom] real)
+        where cutsDom.rank == 1 && cutsDom.idxType == int
+    {
+        if cutsDom.dim(1) != tlocsDom.dim(dim) then {
+            halt("Invalid size of cuts in dimensions "+dim);
+        }
+        
+        const (_tlocsRanges, _tlocsCache) = computePartitioning(dom.dim(dim), cuts);
+        
+        // Set up tlocsPortions
+        for i in tlocsDom do {
+            tlocsPortions(i)(dim) = _tlocsRanges(i(dim));
+        }
+        
+        // Set up cut cache
+        cutCache(dim).dom = _tlocsCache.domain;
+        cutCache(dim).data = _tlocsCache;
+    }
+    
+    proc _initialize(dom: domain, targetLocs: [?targetLocsDom] locale)
+        where dom.rank == rank && dom.idxType == idxType && targetLocs.idxType == int && targetLocs.rank == rank
+    {
+        if targetLocs.size < 1 then {
+            halt("At least one locale needed to distribute...");
+        }
+        
+        for i in 1..rank do {
+            const ds = dom.dim(i).size;
+            const ls = targetLocsDom.dim(i).size;
+            
+            if ds < ls then {
+                halt("targetLocs array's size ("+ls+") is larger than the domain's ("+ds+") in dimension "+i);
+            }
+        }
+        
+        this.dom = dom;
+        
+        tlocsDom = targetLocsDom;
+        tlocsLocales = targetLocs;
+        
+        for i in 1..rank do {
+            const cuts: [tlocsDom.dim(i)] real = 1.0;
+            setCuts(i, cuts);
+        }
+    }
+    
+    proc dump() {
+        writeln();
+        writeln("StaticCutPolicy dump:");
+        writeln();
+        writeln("Cut Cache");
+        for i in 1..rank do {
+            writeln("("+i:string+")["+cutCache(i).dom:string+"]: "+cutCache(i).data:string);
+        }
+        writeln();
+        writeln("tlocsDom");
+        writeln(tlocsDom);
+        writeln();
+        writeln("tlocsLocales");
+        writeln(tlocsLocales);
+        writeln();
+        writeln("tlocsPortions");
+        writeln(tlocsPortions);
+        writeln();
+    }
+    
+    
+    proc setup( /* possible callbacks */ ) {
+        return(tlocsDom, tlocsLocales, tlocsPortions);
+    }
+    
+    proc makeIndexer() {
+        return new StaticCutPolicyIndexer(cutCache, rank, idxType);
+    }
+    
+    proc makeDomainTimer() {
+        return nil;
+    }
+}
+
+class StaticCutPolicyIndexer {
+    param rank;
+    type idxType;
+    
+    var cutCache: rank*ArrayWrapper(1, idxType, int);
+    
+    proc StaticCutPolicyIndexer(cutCache, param rank, type idxType) {
+        this.cutCache = cutCache;
+    }
+    
+    proc resInDim(dim: int, val: idxType) {
+        const cmin = cutCache(dim).dom.low;
+        const cmax = cutCache(dim).dom.high;
+        
+        if val <= cmin then {
+            return cutCache(dim).data(cmin);
+        } else if val >= cmax then {
+            return cutCache(dim).data(cmax);
+        }
+        
+        return cutCache(dim).data(val);
+    }
+    
+    proc targetLocIdx(ind: rank*idxType) {
+        var result: rank*int;
+        for param i in 1..rank do {
+            result(i) = resInDim(i, ind(i));
+        }
+        
+        return if rank == 1 then result(1) else result;
+    }
+}
 
 class SingleDirectionCutPolicy {
     
@@ -110,7 +275,7 @@ class SingleDirectionCutPolicy {
         {
             const rangeMinMax = min(idxType)..max(idxType);
             for i in tlocsDom do {
-                var ranges: rank*range;
+                var ranges: rank*range(idxType);
                 for param i in 1..rank do {
                     ranges(i) = rangeMinMax;
                 }
