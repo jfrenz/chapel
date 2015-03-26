@@ -17,9 +17,14 @@
  * limitations under the License.
  */
 
-// Since the policy VariBlock excepts is a generic, there is no base class.
+
 use Search;
 use VariBlockPolicyHelpers;
+
+// Since the policy VariBlock excepts is a generic, there is no base class.
+
+
+
 
 record ArrayWrapper {
     param rank;
@@ -50,28 +55,11 @@ class StaticCutPolicy {
     // Other studd
     var dom: domain(rank, idxType);
     
-    /*
-    proc StaticCutPolicy(dom: domain, targetLocs: [?targetLocsDom] locale, param rank = dom.rank, type idxType = dom.idxType, cuts: [] real ) {
-        if k != rank then {
-            compilerError("Wrong number of cut tables supplied");
-        }
-        
-        var cutsWrapped: rank*ArrayWrapper(1, int, real);
-        
-        for i in 1..rank do {
-            if cuts(i).domain.dim(1) != targetLocsDom.dim(i) then {
-                halt("targetLocs and cuts don't match in dimension "+i);
-            }
-            cutsWrapped(i).dom = cuts(i).dom;
-            cutsWrapped(i).data = cuts(i).data;
-        }
-        
-        _initialize(dom, targetLocs, cutsWrapped);
-    }*/
     
     proc StaticCutPolicy(dom: domain, targetLocs: [?targetLocsDom] locale, param rank = dom.rank, type idxType = dom.idxType)
     {
         _initialize(dom, targetLocs);
+        if debugVariBlockPolicies then write(this);
     }
     
     proc setCuts(dim: int, cuts: [?cutsDom] real)
@@ -80,6 +68,7 @@ class StaticCutPolicy {
         if cutsDom.dim(1) != tlocsDom.dim(dim) then {
             halt("Invalid size of cuts in dimensions "+dim);
         }
+        
         
         const (_tlocsRanges, _tlocsCache) = computePartitioning(dom.dim(dim), cuts);
         
@@ -120,24 +109,22 @@ class StaticCutPolicy {
         }
     }
     
-    proc dump() {
-        writeln();
-        writeln("StaticCutPolicy dump:");
-        writeln();
-        writeln("Cut Cache");
+    proc writeThis(wr:Writer) {
+        wr.writeln("StaticCutPolicy:");
+        wr.writeln();
+        wr.writeln("Cut Cache");
         for i in 1..rank do {
-            writeln("("+i:string+")["+cutCache(i).dom:string+"]: "+cutCache(i).data:string);
+            wr.writeln("("+i:string+")["+cutCache(i).dom:string+"]: "+cutCache(i).data:string);
         }
-        writeln();
-        writeln("tlocsDom");
-        writeln(tlocsDom);
-        writeln();
-        writeln("tlocsLocales");
-        writeln(tlocsLocales);
-        writeln();
-        writeln("tlocsPortions");
-        writeln(tlocsPortions);
-        writeln();
+        wr.writeln();
+        wr.writeln("tlocsDom");
+        wr.writeln(tlocsDom);
+        wr.writeln();
+        wr.writeln("tlocsLocales");
+        wr.writeln(tlocsLocales);
+        wr.writeln();
+        wr.writeln("tlocsPortions");
+        wr.writeln(tlocsPortions);
     }
     
     
@@ -160,8 +147,9 @@ class StaticCutPolicyIndexer {
     
     var cutCache: rank*ArrayWrapper(1, idxType, int);
     
-    proc StaticCutPolicyIndexer(cutCache, param rank, type idxType) {
+    proc StaticCutPolicyIndexer(in cutCache, param rank, type idxType) {
         this.cutCache = cutCache;
+        if debugVariBlockPolicies then write(this);
     }
     
     proc resInDim(dim: int, val: idxType) {
@@ -184,6 +172,15 @@ class StaticCutPolicyIndexer {
         }
         
         return if rank == 1 then result(1) else result;
+    }
+    
+    proc writeThis(wr:Writer) {
+        wr.writeln("StaticCutPolicyIndexer:");
+        wr.writeln("Locale: "+here.id:string);
+        wr.writeln("Cut Cache");
+        for i in 1..rank do {
+            wr.writeln("("+i:string+")["+cutCache(i).dom:string+"]: "+cutCache(i).data:string);
+        }
     }
 }
 
@@ -302,9 +299,8 @@ class SingleDirectionCutPolicy {
         return nil;
     }
     
-    proc dump() {
-        writeln();
-        writeln("SingleDirectionCutPolicy dump:");
+    proc writeThis(wr:Writer) {
+        writeln("SingleDirectionCutPolicy:");
         writeln();
         writeln("Cut Cache");
         writeln(cutCacheDom);
@@ -318,7 +314,6 @@ class SingleDirectionCutPolicy {
         writeln();
         writeln("tlocsPortions");
         writeln(tlocsPortions);
-        writeln();
     }
 }
 
@@ -480,9 +475,8 @@ class EvenPolicy {
         return nil;
     }
     
-    proc dump() {
-        writeln();
-        writeln("EvenPolicy dump:");
+    proc writeThis(wr:Writer) {
+        writeln("EvenPolicy:");
         writeln();
         writeln("tlocsDom");
         writeln(tlocsDom);
@@ -492,7 +486,6 @@ class EvenPolicy {
         writeln();
         writeln("tlocsPortions");
         writeln(tlocsPortions);
-        writeln();
     }
 }
 

@@ -19,11 +19,19 @@
 
 
 
-proc computePartitioning(R, indexPartitions)
+config param debugVariBlockPolicies = false;
+
+
+proc computePartitioning(R, indexPartitions: [?indexDomain])
     where indexPartitions.rank == 1 && indexPartitions.idxType == int
 {
     
+    
     type idxType = R.idxType;
+    
+    if R.size < 1 || indexPartitions.size < 1 then {
+        halt("At least one element and one partition is required");
+    }
     
     if R.size < indexPartitions.size then {
         halt("Range must contain at least as many elements as indexPartitions");
@@ -37,7 +45,41 @@ proc computePartitioning(R, indexPartitions)
         }
     }
     
-    const indexDomain = indexPartitions.domain;
+    // Stores per-index partitions. Non-overlapping, cover from
+    // min(idxType) to max(idxType)
+    var ranges: [indexDomain] range(idxType);
+    
+    // Cache array. From range's index to locale index
+    var cacheDom: domain(1);
+    var cache: [cacheDom] int;
+    
+    proc debugPrint() {
+        if debugVariBlockPolicies then {
+            var str: string;
+            str += " ********* computePartitioning(R, indexPartitions)";
+            str += " - Argument R:             "+R:string+"\n";
+            str += " - Arg. indexPartitions:  "+indexPartitions:string+"\n";
+            str += " - Return ranges:         "+ranges:string+"\n";
+            str += " - Return cache:          "+cache:string+"\n";
+            str += "\n";
+            write(str);
+        }
+    }
+    
+    // If there is only one locale index:
+    if indexDomain.size == 1 then {
+        const idx = indexDomain.low;
+        cacheDom = {1..#1};
+        cache(1) = idx;
+        ranges(idx) = min(idxType)..max(idxType);
+        
+        debugPrint();
+        
+        return (ranges, cache);
+    }
+    
+    
+    
     const elements = R.size;
     const portionSum: real = + reduce indexPartitions;
     const fac: real = elements:real / portionSum;
@@ -75,18 +117,12 @@ proc computePartitioning(R, indexPartitions)
     }
     assert( (+ reduce exactPortions) == elements );
     
-    // Stores per-index partitions. Non-overlapping, cover from
-    // min(idxType) to max(idxType)
-    var ranges: [indexDomain] range(idxType);
     
     // Minimum and maximum indices to be cached
     const minCacheIdx = R.low + (exactPortions(indexDomain.dim(1).low) - 1);
     const maxCacheIdx = R.high - (exactPortions(indexDomain.dim(1).high) - 1);
-    // const minCacheIdx = R.low ;
-    // const maxCacheIdx = R.high ;
-    
-    // Cache array. From range's index to locale index
-    const cache: [{minCacheIdx..maxCacheIdx}] int;
+    cacheDom = {minCacheIdx..maxCacheIdx};
+
     
     // Fill tables defined above
     var currentStart = R.low;
@@ -103,8 +139,7 @@ proc computePartitioning(R, indexPartitions)
         currentStart += exactPortions(idx);
     }
     
-    //writeln(" --- R: "+ranges:string);
-    //writeln(" --- C: "+cache:string);
+    debugPrint();
     
     return (ranges, cache);
 }
