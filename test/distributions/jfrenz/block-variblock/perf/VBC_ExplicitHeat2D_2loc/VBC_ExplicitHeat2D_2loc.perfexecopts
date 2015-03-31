@@ -1,0 +1,9 @@
+--distType=Block            --testType=Comms                    # VBC_ExplicitHeat2D_2loc-Block-Comms.perfkeys
+--distType=Block            --testType=Mem      --memTrack      # VBC_ExplicitHeat2D_2loc-Block-Mem.perfkeys
+--distType=Block            --testType=Time                     # VBC_ExplicitHeat2D_2loc-Block-Time.perfkeys
+--distType=VB_Even          --testType=Comms                    # VBC_ExplicitHeat2D_2loc-VB_Even-Comms.perfkeys
+--distType=VB_Even          --testType=Mem      --memTrack      # VBC_ExplicitHeat2D_2loc-VB_Even-Mem.perfkeys
+--distType=VB_Even          --testType=Time                     # VBC_ExplicitHeat2D_2loc-VB_Even-Time.perfkeys
+--distType=VB_StaticCut     --testType=Comms                    # VBC_ExplicitHeat2D_2loc-VB_StaticCut-Comms.perfkeys
+--distType=VB_StaticCut     --testType=Mem      --memTrack      # VBC_ExplicitHeat2D_2loc-VB_StaticCut-Mem.perfkeys
+--distType=VB_StaticCut     --testType=Time                     # VBC_ExplicitHeat2D_2loc-VB_StaticCut-Time.perfkeys

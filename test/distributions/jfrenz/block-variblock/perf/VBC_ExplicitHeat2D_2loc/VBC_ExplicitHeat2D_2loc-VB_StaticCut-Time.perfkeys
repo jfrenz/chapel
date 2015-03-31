@@ -1,0 +1,5 @@
+VB_StaticCut-TIME-INIT:
+VB_StaticCut-TIME-RUN:
+verify:-4:Distribution: VB_StaticCut
+verify:-3:Test: Time
+verify:-2:Validation: SUCCESS

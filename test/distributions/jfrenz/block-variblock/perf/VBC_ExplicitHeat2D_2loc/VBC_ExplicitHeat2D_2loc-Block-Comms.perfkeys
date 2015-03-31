@@ -1,0 +1,43 @@
+Block-COMMS-INIT-LOCALE0-get:
+Block-COMMS-RUN-LOCALE0-get:
+Block-COMMS-INIT-LOCALE0-get_nb:
+Block-COMMS-RUN-LOCALE0-get_nb:
+Block-COMMS-INIT-LOCALE0-put:
+Block-COMMS-RUN-LOCALE0-put:
+Block-COMMS-INIT-LOCALE0-put_nb:
+Block-COMMS-RUN-LOCALE0-put_nb:
+Block-COMMS-INIT-LOCALE0-test_nb:
+Block-COMMS-RUN-LOCALE0-test_nb:
+Block-COMMS-INIT-LOCALE0-wait_nb:
+Block-COMMS-RUN-LOCALE0-wait_nb:
+Block-COMMS-INIT-LOCALE0-try_nb:
+Block-COMMS-RUN-LOCALE0-try_nb:
+Block-COMMS-INIT-LOCALE0-fork:
+Block-COMMS-RUN-LOCALE0-fork:
+Block-COMMS-INIT-LOCALE0-fork_fast:
+Block-COMMS-RUN-LOCALE0-fork_fast:
+Block-COMMS-INIT-LOCALE0-fork_nb:
+Block-COMMS-RUN-LOCALE0-fork_nb:
+Block-COMMS-INIT-LOCALE1-get:
+Block-COMMS-RUN-LOCALE1-get:
+Block-COMMS-INIT-LOCALE1-get_nb:
+Block-COMMS-RUN-LOCALE1-get_nb:
+Block-COMMS-INIT-LOCALE1-put:
+Block-COMMS-RUN-LOCALE1-put:
+Block-COMMS-INIT-LOCALE1-put_nb:
+Block-COMMS-RUN-LOCALE1-put_nb:
+Block-COMMS-INIT-LOCALE1-test_nb:
+Block-COMMS-RUN-LOCALE1-test_nb:
+Block-COMMS-INIT-LOCALE1-wait_nb:
+Block-COMMS-RUN-LOCALE1-wait_nb:
+Block-COMMS-INIT-LOCALE1-try_nb:
+Block-COMMS-RUN-LOCALE1-try_nb:
+Block-COMMS-INIT-LOCALE1-fork:
+Block-COMMS-RUN-LOCALE1-fork:
+Block-COMMS-INIT-LOCALE1-fork_fast:
+Block-COMMS-RUN-LOCALE1-fork_fast:
+Block-COMMS-INIT-LOCALE1-fork_nb:
+Block-COMMS-RUN-LOCALE1-fork_nb:
+verify:-4:Distribution: Block
+verify:-3:Test: Comms
+verify:-2:Validation: SUCCESS

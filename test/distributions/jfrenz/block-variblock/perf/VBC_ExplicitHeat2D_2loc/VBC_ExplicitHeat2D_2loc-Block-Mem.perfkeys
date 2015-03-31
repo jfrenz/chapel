@@ -1,0 +1,9 @@
+Block-MEM-BEGIN-LOCALE0:
+Block-MEM-PRERUN-LOCALE0:
+Block-MEM-POSTRUN-LOCALE0:
+Block-MEM-BEGIN-LOCALE1:
+Block-MEM-PRERUN-LOCALE1:
+Block-MEM-POSTRUN-LOCALE1:
+verify:-4:Distribution: Block
+verify:-3:Test: Mem
+verify:-2:Validation: SUCCESS

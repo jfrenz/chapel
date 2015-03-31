@@ -1,0 +1,9 @@
+VB_Even-MEM-BEGIN-LOCALE0:
+VB_Even-MEM-PRERUN-LOCALE0:
+VB_Even-MEM-POSTRUN-LOCALE0:
+VB_Even-MEM-BEGIN-LOCALE1:
+VB_Even-MEM-PRERUN-LOCALE1:
+VB_Even-MEM-POSTRUN-LOCALE1:
+verify:-4:Distribution: VB_Even
+verify:-3:Test: Mem
+verify:-2:Validation: SUCCESS

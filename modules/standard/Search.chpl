@@ -127,5 +127,19 @@ proc _Find(const ref Data: [?Dom], const val, const checkedSearchRange, comparat
   return (false, 0:(Data.idxType));
 }
 
+// Should these work also on multidimensional arrays?
+proc Contains(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1)): bool
+    where Dom.rank == 1
+{
+  const checkedSearchRange = Dom.dim(1)[searchRange];
+  return _Find(Data, val, checkedSearchRange, 0, false)(1);
+}
+
+proc Contains(const ref Data: [?Dom], const val, const searchRange: range = Dom.dim(1), comparator): bool
+    where Dom.rank == 1
+{
+  const checkedSearchRange = Dom.dim(1)[searchRange];
+  return _Find(Data, val, checkedSearchRange, comparator, true)(1);
+}
 
 }

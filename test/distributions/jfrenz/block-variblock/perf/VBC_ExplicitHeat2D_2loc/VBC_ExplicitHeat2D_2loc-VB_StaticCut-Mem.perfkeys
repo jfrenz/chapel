@@ -1,0 +1,9 @@
+VB_StaticCut-MEM-BEGIN-LOCALE0:
+VB_StaticCut-MEM-PRERUN-LOCALE0:
+VB_StaticCut-MEM-POSTRUN-LOCALE0:
+VB_StaticCut-MEM-BEGIN-LOCALE1:
+VB_StaticCut-MEM-PRERUN-LOCALE1:
+VB_StaticCut-MEM-POSTRUN-LOCALE1:
+verify:-4:Distribution: VB_StaticCut
+verify:-3:Test: Mem
+verify:-2:Validation: SUCCESS
